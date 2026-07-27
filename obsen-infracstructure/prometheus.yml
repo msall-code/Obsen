@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 15s # Prometheus va récupérer les données toutes les 15 secondes
+
+scrape_configs:
+  # Surveille Prometheus lui-même
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Surveille tes conteneurs via cAdvisor
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']

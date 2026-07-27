@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: obsen-backend
+
+  # Configuration alignée sur le port réel du Docker-Compose (5439)
+  datasource:
+    url: jdbc:postgresql://localhost:5439/obsen_sre_db
+    username: obsen_user
+    password: ${DB_PASSWORD:obsen_password}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,prometheus"
+      cors:
+        allowed-origins: "http://localhost:5173"
+        allowed-methods: "GET,POST"
+  endpoint:
+    prometheus:
+      enabled: true
+security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Remplacez par l'URL exacte de votre realm Keycloak
+          issuer-uri: http://localhost:7089/auth/realms/Obsen

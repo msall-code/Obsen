@@ -1,0 +1,213 @@
+version: "3.8"
+
+services:
+  # =========================================================================
+  # 1. BASE DE DONNÉES PRINCIPALE (PostgreSQL pour Backend, Keycloak & SRE)
+  # =========================================================================
+  postgres:
+    image: postgres:15
+    container_name: obsen-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-obsen_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-obsen_password}
+      POSTGRES_DB: ${POSTGRES_DB:-obsen_sre_db}
+    ports:
+      - "5439:5432" # Accès local via jdbc:postgresql://localhost:5439/obsen_sre_db
+    volumes:
+      - obsen_postgres_data:/var/lib/postgresql/data
+    networks:
+      - obsen-network
+
+  # =========================================================================
+  # 2. INTERFACE DE GESTION BD POSTGRES (Port d'écoute local : 5059)
+  # =========================================================================
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: obsen-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@obsen.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin_password}
+    ports:
+      - "5059:80" # Accès sur http://localhost:5059
+    depends_on:
+      - postgres
+    networks:
+      - obsen-network
+
+  # =========================================================================
+  # 3. SÉCURITÉ / GESTION DES ACCÈS (Port d'écoute local : 7089)
+  # =========================================================================
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: obsen-keycloak
+    command: 
+      - start-dev 
+      - --db=postgres 
+      - --db-url=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-obsen_sre_db} 
+      - --db-username=${POSTGRES_USER:-obsen_user} 
+      - --db-password=${POSTGRES_PASSWORD:-obsen_password}
+      - --spi-theme-static-max-age=-1
+      - --spi-theme-cache-themes=false
+      - --http-relative-path=/auth
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_RELATIVE_PATH: "/"
+    ports:
+      - "7089:8080"
+    depends_on:
+      - postgres
+    networks:
+      - obsen-network
+
+  # =========================================================================
+  # 4. OBSERVABILITÉ & COLLECTEURS (Ports : 9095, 3105, 3005 & 8081)
+  # =========================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: obsen-prometheus
+    ports:
+      - "9095:9090" # Accès sur http://localhost:9095
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - obsen-network
+
+  loki:
+    image: grafana/loki:latest
+    container_name: obsen-loki
+    ports:
+      - "3105:3100" # Accès de l'API de logs
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - obsen-network
+    
+  grafana:
+    image: grafana/grafana:latest
+    container_name: obsen-grafana
+    ports:
+      - "3005:3000" # Accès admin : http://localhost:3005
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ALLOW_EMBEDDING=true # AUTORISE L'INTEGRATION DANS LES IFRAMES
+      - GF_AUTH_ANONYMOUS_ENABLED=true # AUTORISE TON FRONT A VOIR SANS LOGIN
+      - GF_AUTH_ANONYMOUS_ORG_NAME=Main Org.
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_SECURITY_COOKIE_SAMESITE=none
+      - GF_SECURITY_COOKIE_SECURE=true
+    volumes:
+      - obsen_grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - obsen-network
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: obsen-promtail
+    volumes:
+      - /var/log:/var/log
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./promtail-config.yml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - obsen-network
+    depends_on:
+      - loki
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: obsen-cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "8081:8080"
+    networks:
+      - obsen-network
+
+  # =========================================================================
+  # 5. AUTOMATISATION / ENGINE SRE (Port d'écoute local : 5679)
+  # =========================================================================
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: obsen-n8n
+    ports:
+      - "5679:5678" # Accès sur http://localhost:5679
+    environment:
+      - N8N_SECURE_COOKIE=false
+    volumes:
+      - obsen_n8n_data:/home/node/.n8n
+    networks:
+      - obsen-network
+
+  # =========================================================================
+  # 6. GESTION DE PARC / CMDB (GLPI, Base MariaDB & Manager phpMyAdmin)
+  # =========================================================================
+  glpi-db:
+    image: mariadb:10.11
+    container_name: obsen-glpi-db
+    environment:
+      - MYSQL_ROOT_PASSWORD=glpi_root_password
+      - MYSQL_DATABASE=glpi
+      - MYSQL_USER=glpi_user
+      - MYSQL_PASSWORD=glpi_password
+    volumes:
+      - obsen_glpi_db_data:/var/lib/mysql
+    networks:
+      - obsen-network
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: obsen-phpmyadmin
+    environment:
+      - PMA_HOST=glpi-db
+      - PMA_PORT=3306
+    ports:
+      - "5089:80" # Accès sur http://localhost:5089
+    depends_on:
+      - glpi-db
+    networks:
+      - obsen-network
+
+  glpi:
+    image: glpi/glpi:10.0
+    container_name: obsen-glpi
+    ports:
+      - "8089:80"
+      - "8090:8080"
+    environment:
+      - GLPI_DB_HOST=glpi-db
+      - GLPI_DB_PORT=3306
+      - GLPI_DB_NAME=glpi
+      - GLPI_DB_USER=glpi_user
+      - GLPI_DB_PASSWORD=glpi_password
+      - GLPI_HTTPS=false
+    depends_on:
+      - glpi-db
+    volumes:
+      - obsen_glpi_data:/var/www/html/glpi/files
+    networks:
+      - obsen-network
+
+# =========================================================================
+# CLASSIFICATION DU RÉSEAU ET DES VOLUMES
+# =========================================================================
+networks:
+  obsen-network:
+    driver: bridge
+
+volumes:
+  obsen_postgres_data:
+  obsen_n8n_data:
+  obsen_grafana_data:
+  obsen_glpi_db_data:
+  obsen_glpi_data:
