@@ -17,10 +17,15 @@ public class TenantInterceptorConfig implements WebMvcConfigurer {
     }
 
     @Override
-    public void addInterceptors(@NonNull InterceptorRegistry registry) {
-        // Envelopper explicitement l'objet pour satisfaire l'inspection @NonNull
-        registry.addInterceptor(Objects.requireNonNull(tenantHttpInterceptor))
-                .addPathPatterns("/api/v1/**") 
-                .excludePathPatterns("/api/v1/diagnostic/**");
+public void addInterceptors(InterceptorRegistry registry) {
+    registry.addInterceptor(tenantHttpInterceptor)
+            .addPathPatterns("/api/v1/**")
+            .excludePathPatterns(
+                "/api/v1/diagnostic/**", 
+                "/api/v1/auth/**",      // Exclure le login/refresh
+                "/api/v1/public/**"
+
+            );
+
+        }
     }
-}

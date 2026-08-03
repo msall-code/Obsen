@@ -27,9 +27,7 @@ public class UserService {
                 .role(dto.getRole())
                 .build();
 
-        UserProfile saved = userProfileRepository.save(profile);
-        return mapToResponseDto(saved);
-    }
+       UserProfile saved = userProfileRepository.save(profile);
 
     private UserResponseDto mapToResponseDto(UserProfile profile) {
         return UserResponseDto.builder()
