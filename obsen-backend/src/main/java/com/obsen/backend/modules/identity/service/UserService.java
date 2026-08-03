@@ -1,6 +1,5 @@
 package com.obsen.backend.modules.identity.service;
 
-import java.util.Objects;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +20,7 @@ public class UserService {
 
     @Transactional
     public UserResponseDto createUser(UserCreateDto dto) {
-        String keycloakId = keycloakAdminService.createUser(dto);
+        String keycloakId = keycloakAdminService.createUserInKeycloak(dto);
 
         UserProfile profile = UserProfile.builder()
                 .keycloakId(keycloakId)
@@ -32,8 +31,7 @@ public class UserService {
                 .role(dto.getRole())
                 .build();
 
-        // Enveloppez le retour du repository pour supprimer le warning Null Safety
-        UserProfile saved = Objects.requireNonNull(userProfileRepository.save(profile));
+        UserProfile saved = userProfileRepository.save(profile);
 
         return mapToResponseDto(saved);
     }
