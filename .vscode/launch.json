@@ -9,6 +9,16 @@
             "projectName": "backend",
             "args": "",
             "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot-BackendApplication<obsen-backend>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.obsen.backend.BackendApplication",
+            "projectName": "obsen-backend",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
         }
     ]
 }

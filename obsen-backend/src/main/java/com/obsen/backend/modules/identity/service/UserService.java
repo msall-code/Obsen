@@ -10,6 +10,7 @@ import com.obsen.backend.modules.identity.model.UserProfile;
 import com.obsen.backend.modules.identity.repository.UserProfileRepository;
 
 import lombok.RequiredArgsConstructor;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
