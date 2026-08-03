@@ -1,31 +1,36 @@
+// src/api/axiosClient.js
 import axios from 'axios';
-import keycloak from '../services/keycloak';
+import { logout } from '../services/authService';
 
 const axiosClient = axios.create({
-  baseURL: 'http://localhost:8080/api/v1', // URL de votre backend Spring Boot
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081/api',
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Intercepteur : Ajoute automatiquement le token JWT avant chaque requête HTTP
-axiosClient.interceptors.request.use(
-  async (config) => {
-    if (keycloak.authenticated) {
-      // Met à jour le token s'il expire dans moins de 30 secondes
-      try {
-        await keycloak.updateToken(30);
-      } catch (error) {
-        console.error("Échec du rafraîchissement du token", error);
-        keycloak.login();
-      }
-      
-      // Injecte le token dans le header Authorization
-      config.headers.Authorization = `Bearer ${keycloak.token}`;
-    }
-    return config;
-  },
+// Intercepteur pour CHAQUE requête
+axiosClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('access_token');
+  const tenantId = localStorage.getItem('tenant_id');
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  if (tenantId) {
+    config.headers['X-Tenant-ID'] = tenantId;
+  }
+
+  return config;
+}, (error) => Promise.reject(error));
+
+// Intercepteur pour gérer l'expiration du token (401/403)
+axiosClient.interceptors.response.use(
+  (response) => response,
   (error) => {
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      logout();
+    }
     return Promise.reject(error);
   }
 );

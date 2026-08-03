@@ -1,11 +1,9 @@
-import Keycloak from 'keycloak-js';
+import Keycloak from "keycloak-js";
 
-const keycloakConfig = {
-  url: 'http://localhost:7089/auth', // L'adresse de votre serveur Keycloak
-  realm: 'Obsen',                     // Le nom de votre Realm
-  clientId: 'obsen-client',          // L'identifiant du client React
-};
-
-const keycloak = new Keycloak(keycloakConfig);
+const keycloak = new Keycloak({
+  url: "http://localhost:7089/auth", // URL matching issuer-uri in application.yaml
+  realm: "Obsen",
+  clientId: "obsen-frontend",       // Your frontend client ID configured in Keycloak
+});
 
 export default keycloak;

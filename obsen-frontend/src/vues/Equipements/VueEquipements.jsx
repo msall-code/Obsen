@@ -1,7 +1,7 @@
+// obsen-frontend/src/vues/Equipements/VueGestionParc.jsx
 import React, { useState, useEffect } from "react";
-// Importations corrigées selon ton arborescence :
-import FormulaireGestion from "../components/Equipements/FormulaireGestion";
-import ListeEquipements from "../components/Equipements/ListeEquipements";
+import FormulaireGestion from "../../components/Equipements/FormulaireGestion";
+import ListeEquipements from "../../components/Equipements/ListeEquipements";
 
 export default function VueGestionParc({ auSelectionner }) {
   const [equipements, setEquipements] = useState([]);
@@ -9,15 +9,14 @@ export default function VueGestionParc({ auSelectionner }) {
   const [chargement, setChargement] = useState(true);
   const [messageAction, setMessageAction] = useState("");
 
-  // Chargement depuis GLPI / Back
   const rafraichirInventaire = async () => {
     setChargement(true);
     try {
       const reponse = await fetch("http://localhost:8081/api/equipements"); 
       const donnees = await reponse.json();
       setEquipements(donnees);
-    } catch (erreur) {
-      console.error("Erreur de synchronisation GLPI :", erreur);
+    } catch (error_) {
+      console.error("Erreur de synchronisation GLPI :", error_);
       setEquipements([]);
     } finally {
       setChargement(false);
@@ -28,7 +27,6 @@ export default function VueGestionParc({ auSelectionner }) {
     rafraichirInventaire();
   }, []);
 
-  // Soumission (Ajout ou Édition) vers n8n / Back
   const gererSoumissionEquipement = async (nouvelEquipement) => {
     try {
       const methode = equipementEnEdition ? "PUT" : "POST";
@@ -51,7 +49,8 @@ export default function VueGestionParc({ auSelectionner }) {
       } else {
         setMessageAction("⚠️ Erreur lors de la mise à jour de la CMDB.");
       }
-    } catch (err) {
+    } catch (error_) {
+      console.error("Échec de la soumission :", error_);
       setMessageAction("❌ Impossible de joindre l'orchestrateur n8n/Backend.");
     }
     setTimeout(() => setMessageAction(""), 4000);
@@ -65,13 +64,13 @@ export default function VueGestionParc({ auSelectionner }) {
         setMessageAction("🗑️ Équipement retiré du parc.");
         rafraichirInventaire();
       }
-    } catch (err) {
+    } catch (error_) {
+      console.error("Échec de la suppression :", error_);
       setMessageAction("❌ Erreur de suppression.");
     }
     setTimeout(() => setMessageAction(""), 3000);
   };
 
-  // KPIs
   const total = equipements.length;
   const hardwareCount = equipements.filter(e => e.categorie === 'Hardware').length;
   const softwareCount = equipements.filter(e => e.categorie === 'Software').length;
@@ -79,8 +78,6 @@ export default function VueGestionParc({ auSelectionner }) {
 
   return (
     <div className="space-y-6 text-left p-2">
-      
-      {/* 📊 DASHBOARD DE STATUT DE SYNCHRONISATION */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
           <p className="text-[10px] font-bold text-slate-400 uppercase">Équipements Totaux</p>
@@ -102,17 +99,13 @@ export default function VueGestionParc({ auSelectionner }) {
         </div>
       </div>
 
-      {/* Notifications */}
       {messageAction && (
         <div className="p-3 bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 text-blue-700 dark:text-blue-300 rounded-xl text-xs font-semibold">
           {messageAction}
         </div>
       )}
 
-      {/* BLOC PRINCIPAL */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* LISTE DYNAMIQUE (2/3) */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
             <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide">
@@ -138,7 +131,6 @@ export default function VueGestionParc({ auSelectionner }) {
           )}
         </div>
 
-        {/* FORMULAIRE (1/3) */}
         <div className="space-y-4">
           <FormulaireGestion 
             auSoumettre={gererSoumissionEquipement}
@@ -146,7 +138,6 @@ export default function VueGestionParc({ auSelectionner }) {
             auAnnulerEdition={() => setEquipementEnEdition(null)}
           />
         </div>
-
       </div>
     </div>
   );

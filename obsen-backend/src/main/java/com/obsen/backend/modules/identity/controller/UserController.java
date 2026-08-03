@@ -13,17 +13,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/identity")
 public class UserController {
 
-    // 👤 Accessible par tout utilisateur connecté (User ou Admin)
+    // 👤 Accessible par tout utilisateur authentifié
     @GetMapping("/me")
     public Map<String, Object> getMyProfile(@AuthenticationPrincipal Jwt jwt) {
         return Map.of(
-            "id", jwt.getSubject(), // Identifiant unique Keycloak
-            "username", jwt.getClaim("preferred_username"),
-            "email", jwt.getClaim("email")
+            "id", jwt.getSubject(),
+            "username", jwt.getClaimAsString("preferred_username"),
+            "email", jwt.getClaimAsString("email")
         );
     }
 
-    // 👑 Accessible UNIQUEMENT par l'Admin
+    // 👑 Accessible UNIQUEMENT par les administrateurs
     @GetMapping("/admin/dashboard")
     @PreAuthorize("hasRole('admin')")
     public String getAdminDashboard() {

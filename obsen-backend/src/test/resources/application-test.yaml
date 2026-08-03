@@ -1,5 +1,33 @@
 spring:
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
-      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+  application:
+    name: obsen-backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5439/obsen_sre_db
+    username: obsen_user
+    password: ${DB_PASSWORD:obsen_password}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:7089/auth/realms/Obsen
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,prometheus"
+      cors:
+        allowed-origins: "http://localhost:5173"
+        allowed-methods: "GET,POST"
+  endpoint:
+    prometheus:
+      access: read_only
