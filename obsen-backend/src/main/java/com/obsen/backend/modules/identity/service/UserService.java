@@ -33,7 +33,7 @@ public class UserService {
 
         UserProfile saved = userProfileRepository.save(profile);
 
-        return mapToResponseDto(saved);
+        return mapToResponseDto(Objects.requireNonNull(saved, "Saved user profile must not be null"));
     }
 
     private UserResponseDto mapToResponseDto(@NonNull UserProfile profile) {
