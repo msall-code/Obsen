@@ -28,7 +28,10 @@ axiosClient.interceptors.request.use((config) => {
 axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+    const isLoginRequest = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/login');
+
+    // On exécute logout() uniquement si ce n'est PAS une tentative de login
+    if (error.response && (error.response.status === 401 || error.response.status === 403) && !isLoginRequest) {
       logout();
     }
     return Promise.reject(error);

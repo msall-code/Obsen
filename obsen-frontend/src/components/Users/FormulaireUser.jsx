@@ -14,8 +14,8 @@ export default function FormulaireUser({ onUserCreated }) {
   };
 
   const handleSubmit = (e) => {
-    e.preventDefault();
-    onUserCreated(formData);
+    e.preventDefault(); // Bloque le rechargement navigateur
+    onUserCreated(formData); // Appel de la fonction transmise par le parent
     setFormData({ username: "", email: "", firstName: "", lastName: "", role: "USER" });
   };
 
