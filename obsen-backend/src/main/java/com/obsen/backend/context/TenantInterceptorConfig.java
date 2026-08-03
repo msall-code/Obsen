@@ -15,7 +15,7 @@ public class TenantInterceptorConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(@NonNull InterceptorRegistry registry) {
-        registry.addInterceptor(tenantHttpInterceptor)
+        registry.addInterceptor(Objects.requireNonNull(tenantHttpInterceptor))
                 .addPathPatterns("/api/v1/**")
                 .excludePathPatterns(
                         "/api/v1/diagnostic/**",
