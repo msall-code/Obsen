@@ -19,7 +19,7 @@ public class TenantInterceptorConfig implements WebMvcConfigurer {
                 .addPathPatterns("/api/v1/**")
                 .excludePathPatterns(
                         "/api/v1/diagnostic/**",
-                        "/api/v1/auth/**",      // Exclut le login/token de l'intercepteur
+                        "/api/v1/auth/**",
                         "/api/v1/public/**",
                         "/v3/api-docs/**",
                         "/swagger-ui/**"
