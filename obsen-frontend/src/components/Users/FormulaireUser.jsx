@@ -14,8 +14,8 @@ export default function FormulaireUser({ onUserCreated }) {
   };
 
   const handleSubmit = (e) => {
-    e.preventDefault(); // Bloque le rechargement navigateur
-    onUserCreated(formData); // Appel de la fonction transmise par le parent
+    e.preventDefault();
+    onUserCreated(formData);
     setFormData({ username: "", email: "", firstName: "", lastName: "", role: "USER" });
   };
 
@@ -25,8 +25,11 @@ export default function FormulaireUser({ onUserCreated }) {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="text-xs font-semibold text-slate-400">Nom d'utilisateur *</label>
+          <label htmlFor="username" className="text-xs font-semibold text-slate-400">
+            Nom d'utilisateur *
+          </label>
           <input
+            id="username"
             type="text"
             name="username"
             value={formData.username}
@@ -37,8 +40,11 @@ export default function FormulaireUser({ onUserCreated }) {
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-slate-400">E-mail *</label>
+          <label htmlFor="email" className="text-xs font-semibold text-slate-400">
+            E-mail *
+          </label>
           <input
+            id="email"
             type="email"
             name="email"
             value={formData.email}
@@ -49,8 +55,11 @@ export default function FormulaireUser({ onUserCreated }) {
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-slate-400">Prénom</label>
+          <label htmlFor="firstName" className="text-xs font-semibold text-slate-400">
+            Prénom
+          </label>
           <input
+            id="firstName"
             type="text"
             name="firstName"
             value={formData.firstName}
@@ -60,8 +69,11 @@ export default function FormulaireUser({ onUserCreated }) {
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-slate-400">Nom</label>
+          <label htmlFor="lastName" className="text-xs font-semibold text-slate-400">
+            Nom
+          </label>
           <input
+            id="lastName"
             type="text"
             name="lastName"
             value={formData.lastName}
@@ -72,8 +84,11 @@ export default function FormulaireUser({ onUserCreated }) {
       </div>
 
       <div>
-        <label className="text-xs font-semibold text-slate-400">Rôle</label>
+        <label htmlFor="role" className="text-xs font-semibold text-slate-400">
+          Rôle
+        </label>
         <select
+          id="role"
           name="role"
           value={formData.role}
           onChange={handleChange}

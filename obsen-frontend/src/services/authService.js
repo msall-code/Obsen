@@ -1,17 +1,29 @@
 // src/services/authService.js
-import axios from 'axios';
-
-const API_URL = 'http://localhost:8080/api/v1/auth';
+import axiosClient from '../api/axiosClient';
 
 export const loginUser = async (credentials) => {
   try {
-    const response = await axios.post(`${API_URL}/login`, credentials);
-    if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user || {}));
+    // Adapter le endpoint selon votre backend (ex: /auth/login ou /v1/auth/login)
+    const response = await axiosClient.post('/auth/login', credentials);
+    
+    // Vérifiez la structure de votre retour Keycloak/Spring
+    if (response.data?.access_token) {
+      localStorage.setItem('access_token', response.data.access_token);
     }
     return response.data;
   } catch (error) {
-    throw error.response?.data?.message || "Identifiants invalides ou serveur indisponible.";
+    // CRUCIAL : On renvoie un message lisible, PAS l'objet error brut
+    const errorMessage = 
+      error.response?.data?.error_description || 
+      error.response?.data?.message || 
+      'Identifiants invalides ou serveur indisponible';
+      
+    throw new Error(errorMessage);
   }
+};
+
+export const logout = () => {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('tenant_id');
+  window.location.href = '/auth/login';
 };
