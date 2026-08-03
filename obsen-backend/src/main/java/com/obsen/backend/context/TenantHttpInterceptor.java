@@ -1,7 +1,7 @@
 package com.obsen.backend.context;
 
-import org.springframework.lang.NonNull;   // Import ajouté
-import org.springframework.lang.Nullable; // Import ajouté
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -40,7 +40,7 @@ public class TenantHttpInterceptor implements HandlerInterceptor {
             @NonNull HttpServletRequest request, 
             @NonNull HttpServletResponse response, 
             @NonNull Object handler, 
-            @Nullable Exception ex) throws Exception { // Note: @Nullable sur Exception ex
+            @Nullable Exception ex) throws Exception {
 
         TenantContext.clear();
     }
