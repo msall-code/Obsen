@@ -3,7 +3,6 @@ import axios from 'axios';
 import { logout } from '../services/authService';
 
 const axiosClient = axios.create({
-  // Port 8080 au lieu de 8081
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1',
   headers: {
     'Content-Type': 'application/json',
@@ -11,11 +10,15 @@ const axiosClient = axios.create({
 });
 
 // Intercepteur pour CHAQUE requête
+// src/api/axiosClient.js
 axiosClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token');
   const tenantId = localStorage.getItem('tenant_id');
 
-  if (token) {
+  // NE PAS envoyer de token si on appelle le login !
+  const isLoginRequest = config.url?.includes('/auth/login');
+
+  if (token && !isLoginRequest) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   if (tenantId) {
@@ -29,15 +32,15 @@ axiosClient.interceptors.request.use((config) => {
 axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Vérification sécurisée du path de login
+    // Ne PAS exécuter logout() si la requête échouée est la tentative d'authentification
     const url = error.config?.url || '';
-    const isLoginRequest = url.includes('/login') || url.includes('/auth');
+    const isLoginRequest = url.includes('/auth/login');
 
-    // N'exécuter logout() QUE si l'erreur 401/403 NE VIENT PAS de la tentative de login
     if (error.response && (error.response.status === 401 || error.response.status === 403) && !isLoginRequest) {
       logout();
     }
     return Promise.reject(error);
   }
 );
+
 export default axiosClient;

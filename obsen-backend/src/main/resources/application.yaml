@@ -17,7 +17,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          # URL exacte confirmée par le JSON de découverte Keycloak
+          # Assurez-vous que cette URL est exactement celle fournie dans le Well-Known OpenID
           issuer-uri: http://localhost:7089/auth/realms/Obsen-realm
 
 management:
@@ -32,9 +32,10 @@ management:
     prometheus:
       enabled: true
 
+# Propriétés personnalisées pour le Keycloak Client / AuthController
 keycloak:
-  server-url: http://localhost:7089/auth # Ajout du prefixe /auth pour l'Admin Client
-  realm: Obsen-realm                     # Utilisation du realm obsen
-  client-id: admin-cli
-  username: admin
-  password: admin
+  auth-server-url: http://localhost:7089/auth
+  realm: Obsen-realm
+  resource: obsen-backend
+  credentials:
+    secret: "CUY3P7BicvT4QY08KbCKbaAPMNhY9rBY" # Renseignez le client secret si le client 'obsen-backend' est de type Confidential

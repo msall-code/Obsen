@@ -5,7 +5,6 @@ import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -20,29 +19,47 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    private final JwtAuthConverter jwtAuthConverter;
+
+    public SecurityConfig(JwtAuthConverter jwtAuthConverter) {
+        this.jwtAuthConverter = jwtAuthConverter;
+    }
+
     @Bean
-    @SuppressWarnings("java:S4502") // CSRF non requis pour une API REST Stateless / Auth endpoints
+    @SuppressWarnings("java:S4502") // CSRF non requis pour une API REST Stateless
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             // Configuration CORS & CSRF
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             
-            // Gestion de session Stateless (pas de cookies de session)
+            // Gestion de session Stateless
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             
             // Configuration des autorisations d'accès
             .authorizeHttpRequests(auth -> auth
-                // Autoriser les requêtes OPTIONS (CORS pre-flight)
+                // 1. Requêtes Pre-flight CORS (OPTIONS)
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                // Endpoints publics (Auth & Actuator)
-                .requestMatchers("/api/v1/auth/**", "/actuator/**").permitAll()
-                // Tous les autres endpoints nécessitent une authentification JWT
+                
+                // 2. Endpoints publics : Authentification, Actuator et Documentation Swagger/OpenAPI
+                .requestMatchers(
+                    "/api/v1/auth/**", 
+                    "/v1/auth/**", 
+                    "/auth/**", 
+                    "/actuator/**",
+                    "/v3/api-docs/**",
+                    "/swagger-ui/**",
+                    "/swagger-ui.html"
+                ).permitAll()
+                
+                // 3. Le reste nécessite un token JWT valide
                 .anyRequest().authenticated()
             )
             
-            // Support OAuth2 Resource Server (JWT)
-            .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
+            // Support OAuth2 Resource Server avec le convertisseur de rôles Keycloak
+            .oauth2ResourceServer(oauth2 -> oauth2
+                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter))
+            );
 
         return http.build();
     }
@@ -65,5 +82,4 @@ public class SecurityConfig {
         
         return source;
     }
-    
 }
