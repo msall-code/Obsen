@@ -1,18 +1,20 @@
-import React from "react";
-import { Outlet } from "react-router-dom";
-import Sidebar from "./Sidebar";
-import Navbar from "./Navbar";
+import React from 'react';
+import { Outlet } from 'react-router-dom';
+import Navbar from './Navbar';
+import Sidebar from './Sidebar';
+import keycloak from '../../services/keycloak';
 
 export default function MainLayout() {
-  return (
-    <div className="flex min-h-screen bg-slate-950 font-sans text-slate-100">
-      {/* Sidebar Fixe */}
-      <Sidebar />
+  const isAuthenticated = keycloak.authenticated;
 
-      {/* Zone Principale */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <Navbar />
-        <main className="flex-1 p-8 overflow-y-auto">
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <Navbar />
+
+      <div className="flex flex-1">
+        {isAuthenticated && <Sidebar />}
+
+        <main className={`flex-1 p-6 ${!isAuthenticated ? 'max-w-7xl mx-auto w-full' : ''}`}>
           <Outlet />
         </main>
       </div>

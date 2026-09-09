@@ -1,6 +1,5 @@
-// src/api/axiosClient.js
 import axios from 'axios';
-import { logout } from '../services/authService';
+import keycloak from './keycloak';
 
 const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1',
@@ -9,36 +8,45 @@ const axiosClient = axios.create({
   },
 });
 
-// Intercepteur pour CHAQUE requête
-// src/api/axiosClient.js
-axiosClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
-  const tenantId = localStorage.getItem('tenant_id');
+// Intercepteur de requête : Rafraîchit l'access token s'il expire dans les 30s
+axiosClient.interceptors.request.use(
+  async (config) => {
+    if (keycloak?.authenticated) {
+      try {
+        // Tente de rafraîchir le token s'il expire sous 30 secondes
+        await keycloak.updateToken(30);
+        config.headers.Authorization = `Bearer ${keycloak.token}`;
+      } catch (err) {
+        console.error('❌ Refresh Token expiré ou invalide. Déconnexion automatique...', err);
+        keycloak.logout();
+        return Promise.reject(err);
+      }
+    } else {
+      console.warn("⚠️ Client non authentifié sur Keycloak.");
+    }
 
-  // NE PAS envoyer de token si on appelle le login !
-  const isLoginRequest = config.url?.includes('/auth/login');
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
-  if (token && !isLoginRequest) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  if (tenantId) {
-    config.headers['X-Tenant-ID'] = tenantId;
-  }
-
-  return config;
-}, (error) => Promise.reject(error));
-
-// Intercepteur pour gérer l'expiration du token (401/403)
+// Intercepteur de réponse : Redirige vers logout en cas de 401
 axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Ne PAS exécuter logout() si la requête échouée est la tentative d'authentification
-    const url = error.config?.url || '';
-    const isLoginRequest = url.includes('/auth/login');
+    const status = error.response?.status;
 
-    if (error.response && (error.response.status === 401 || error.response.status === 403) && !isLoginRequest) {
-      logout();
+    if (status === 401) {
+      console.warn("⚠️ Session invalide ou expirée (401). Déconnexion...");
+      if (keycloak?.authenticated) {
+        keycloak.logout();
+      }
     }
+
+    if (status === 403) {
+      console.error("⛔ [403 Forbidden] Rôle insuffisant ou mal extrait par le backend.");
+    }
+
     return Promise.reject(error);
   }
 );

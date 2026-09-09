@@ -12,13 +12,14 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: false
+    open-in-view: false
 
   security:
     oauth2:
       resourceserver:
         jwt:
-          # Assurez-vous que cette URL est exactement celle fournie dans le Well-Known OpenID
-          issuer-uri: http://localhost:7089/auth/realms/Obsen-realm
+          issuer-uri: http://localhost:7089/auth/realms/Obsen-Realm
+          jwk-set-uri: http://localhost:7089/auth/realms/Obsen-Realm/protocol/openid-connect/certs
 
 management:
   endpoints:
@@ -27,15 +28,8 @@ management:
         include: "health,info,prometheus"
       cors:
         allowed-origins: "http://localhost:5173"
-        allowed-methods: "GET,POST"
+        allowed-methods: "GET,POST,PUT,DELETE"
   endpoint:
     prometheus:
       enabled: true
-
-# Propriétés personnalisées pour le Keycloak Client / AuthController
-keycloak:
-  auth-server-url: http://localhost:7089/auth
-  realm: Obsen-realm
-  resource: obsen-backend
-  credentials:
-    secret: "CUY3P7BicvT4QY08KbCKbaAPMNhY9rBY" # Renseignez le client secret si le client 'obsen-backend' est de type Confidential
+      

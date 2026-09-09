@@ -4,9 +4,9 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import com.obsen.backend.modules.identity.model.UserProfile;
+import com.obsen.backend.modules.identity.model.User;
 
-public interface UserProfileRepository extends JpaRepository<UserProfile, Long> {
-    Optional<UserProfile> findByUsername(String username);
-    Optional<UserProfile> findByKeycloakId(String keycloakId);
+public interface UserProfileRepository extends JpaRepository<User, Long> {
+    Optional<User> findByUsername(String username);
+    Optional<User> findByKeycloakId(String keycloakId);
 }

@@ -1,50 +1,50 @@
 package com.obsen.backend.modules.identity.service;
 
-import org.springframework.lang.NonNull;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import com.obsen.backend.modules.identity.dto.UserCreateDto;
 import com.obsen.backend.modules.identity.dto.UserResponseDto;
-import com.obsen.backend.modules.identity.model.UserProfile;
+import com.obsen.backend.modules.identity.model.User;
 import com.obsen.backend.modules.identity.repository.UserProfileRepository;
 
-import lombok.RequiredArgsConstructor;
-import java.util.Objects;
-
 @Service
-@RequiredArgsConstructor
 public class UserService {
 
-    private final UserProfileRepository userProfileRepository;
-    private final KeycloakAdminService keycloakAdminService;
+    private final UserProfileRepository userRepository;
 
-    @Transactional
-    public UserResponseDto createUser(UserCreateDto dto) {
-        String keycloakId = keycloakAdminService.createUserInKeycloak(dto);
-
-        UserProfile profile = UserProfile.builder()
-                .keycloakId(keycloakId)
-                .username(dto.getUsername())
-                .email(dto.getEmail())
-                .firstName(dto.getFirstName())
-                .lastName(dto.getLastName())
-                .role(dto.getRole())
-                .build();
-
-        UserProfile saved = userProfileRepository.save(profile);
-
-        return mapToResponseDto(Objects.requireNonNull(saved, "Saved user profile must not be null"));
+    public UserService(UserProfileRepository userRepository) {
+        this.userRepository = userRepository; // <-- CORRIGÉ : this.userRepository au lieu de userProfileRepository
     }
 
-    private UserResponseDto mapToResponseDto(@NonNull UserProfile profile) {
+    /**
+     * Synchronise le profil utilisateur en base locale à partir du Token JWT de Keycloak
+     */
+    public UserResponseDto syncUserProfile(Jwt jwt) {
+        String keycloakId = jwt.getSubject();
+        String username = jwt.getClaimAsString("preferred_username");
+        String email = jwt.getClaimAsString("email");
+        String firstName = jwt.getClaimAsString("given_name");
+        String lastName = jwt.getClaimAsString("family_name");
+
+        User user = userRepository.findByKeycloakId(keycloakId)
+                .orElseGet(() -> User.builder()
+                        .keycloakId(keycloakId)
+                        .build());
+
+        user.setUsername(username);
+        user.setEmail(email);
+        user.setFirstName(firstName);
+        user.setLastName(lastName);
+
+        User savedUser = userRepository.save(user);
+
         return UserResponseDto.builder()
-                .keycloakId(profile.getKeycloakId())
-                .username(profile.getUsername())
-                .email(profile.getEmail())
-                .firstName(profile.getFirstName())
-                .lastName(profile.getLastName())
-                .role(profile.getRole())
+                .id(savedUser.getId())
+                .keycloakId(savedUser.getKeycloakId())
+                .username(savedUser.getUsername())
+                .email(savedUser.getEmail())
+                .firstName(savedUser.getFirstName())
+                .lastName(savedUser.getLastName())
                 .build();
     }
 }
