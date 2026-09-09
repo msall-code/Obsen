@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { userService } from '../../../services/userService';
 import CreateRoleModal from './CreateRoleModal';
@@ -15,7 +15,7 @@ export default function UserListPage() {
 
   // État Modaux
   const [isCreateRoleOpen, setIsCreateRoleOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState(null); // Utilisateur sélectionné pour l'édition modal
+  const [editingUser, setEditingUser] = useState(null);
 
   // Édition directe des Rôles
   const [editingRoleName, setEditingRoleName] = useState(null);
@@ -55,7 +55,12 @@ export default function UserListPage() {
   };
 
   useEffect(() => {
-    loadData();
+    let isMounted = true;
+    const fetchAll = async () => {
+      if (isMounted) await loadData();
+    };
+    fetchAll();
+    return () => { isMounted = false; };
   }, []);
 
   // --- HANDLERS UTILISATEURS ---
@@ -71,9 +76,8 @@ export default function UserListPage() {
     }
   };
 
-  const handleSaveUserEdit = async (userId, updatedUserData, targetRole, currentRoles) => {
+  const handleSaveUserEdit = async (userId, updatedUserData, targetRole) => {
     try {
-      // 1. Sauvegarde des données de profil (Username, Nom, Prénom, Email)
       if (userService.updateUser) {
         await userService.updateUser(userId, {
           username: updatedUserData.username,
@@ -83,19 +87,17 @@ export default function UserListPage() {
         });
       }
 
-      // 2. Mise à jour du rôle si modifié
       const oldRole = userRolesMap[userId];
       if (targetRole?.id !== oldRole?.id) {
         await userService.updateUserRole(userId, oldRole, targetRole);
       }
 
-      // 3. Rafraîchir les données locales
       setUsers((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, ...updatedUserData } : u))
       );
       setUserRolesMap((prev) => ({ ...prev, [userId]: targetRole || null }));
     } catch (err) {
-      throw new Error(`Erreur lors de la mise à jour : ${err.message}`);
+      throw new Error(`Erreur lors de la mise à jour : ${err.message}`, { cause: err });
     }
   };
 
@@ -143,7 +145,7 @@ export default function UserListPage() {
       });
 
       setEditingRoleName(null);
-      loadData();
+      await loadData();
     } catch (err) {
       alert(`Erreur lors de la modification du rôle: ${err.message}`);
     }
@@ -161,7 +163,6 @@ export default function UserListPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 p-6">
-      {/* En-tête */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">⚙️ Gestion des Accès</h1>
@@ -187,36 +188,35 @@ export default function UserListPage() {
         )}
       </div>
 
-      {/* Navigation Onglets */}
       <div className="flex border-b border-slate-200 gap-2">
         <button
           onClick={() => setActiveTab('users')}
-          className={`pb-3 px-4 font-semibold text-sm transition border-b-2 ${activeTab === 'users'
+          className={`pb-3 px-4 font-semibold text-sm transition border-b-2 ${
+            activeTab === 'users'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
+          }`}
         >
           👤 Utilisateurs ({users.length})
         </button>
         <button
           onClick={() => setActiveTab('roles')}
-          className={`pb-3 px-4 font-semibold text-sm transition border-b-2 ${activeTab === 'roles'
+          className={`pb-3 px-4 font-semibold text-sm transition border-b-2 ${
+            activeTab === 'roles'
               ? 'border-indigo-600 text-indigo-600'
               : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
+          }`}
         >
           🛡️ Rôles ({roles.length})
         </button>
       </div>
 
-      {/* Contenu principal */}
       {loading ? (
         <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center text-slate-500">
           Chargement des données Keycloak...
         </div>
       ) : (
         <>
-          {/* TAB 1: UTILISATEURS */}
           {activeTab === 'users' && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
               <table className="w-full text-left text-sm text-slate-600">
@@ -250,10 +250,11 @@ export default function UserListPage() {
                           <td className="p-4">{u.email || '-'}</td>
                           <td className="p-4">
                             <span
-                              className={`px-2.5 py-1 rounded-full text-xs font-semibold ${u.enabled
+                              className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                u.enabled
                                   ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
                                   : 'bg-rose-50 text-rose-600 border border-rose-200'
-                                }`}
+                              }`}
                             >
                               {u.enabled ? 'Actif' : 'Inactif'}
                             </span>
@@ -301,7 +302,6 @@ export default function UserListPage() {
             </div>
           )}
 
-          {/* TAB 2: RÔLES */}
           {activeTab === 'roles' && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
               <table className="w-full text-left text-sm text-slate-600">
@@ -404,7 +404,7 @@ export default function UserListPage() {
       <CreateRoleModal
         isOpen={isCreateRoleOpen}
         onClose={() => setIsCreateRoleOpen(false)}
-        onRoleCreated={loadData}
+        onCreated={loadData}
       />
 
       <UserEditModal

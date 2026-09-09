@@ -2,10 +2,9 @@ import keycloak from './keycloak';
 
 const BASE_URL = 'http://localhost:7089/auth/admin/realms/Obsen-Realm';
 
-// Helper pour obtenir un token valide à chaque requête
 const getValidToken = async () => {
   try {
-    await keycloak.updateToken(30); // Rafraîchit le token s'il expire dans moins de 30 sec
+    await keycloak.updateToken(30);
   } catch (err) {
     console.error('Échec du rafraîchissement du token Keycloak', err);
     keycloak.login();
@@ -33,20 +32,15 @@ export const userService = {
     return await response.json();
   },
 
-  // 🟢 AJOUT : Mettre à jour les informations de profil utilisateur dans Keycloak
   async updateUser(userId, updatedFields) {
     const token = await getValidToken();
-
-    // 1. Récupération de l'état actuel pour éviter d'écraser des champs non fournis (groupes, attributes, etc.)
     const existingUser = await this.getUserById(userId);
 
-    // 2. Fusion des champs modifiés
     const payload = {
       ...existingUser,
       ...updatedFields,
     };
 
-    // 3. Envoi de la mise à jour à Keycloak
     const response = await fetch(`${BASE_URL}/users/${userId}`, {
       method: 'PUT',
       headers: {
@@ -97,8 +91,6 @@ export const userService = {
   },
 
   async toggleUserEnabled(userId, currentStatus) {
-    const token = await getValidToken();
-    // Utiliser la mise à jour partielle sécurisée
     await this.updateUser(userId, { enabled: !currentStatus });
   },
 
@@ -183,6 +175,26 @@ export const userService = {
       body: JSON.stringify(updatedRoleData),
     });
     if (!response.ok) throw new Error('Échec de la mise à jour du rôle dans Keycloak.');
+  },
+
+  async resetPassword(userId, newPassword) {
+    const token = await getValidToken();
+    const response = await fetch(`${BASE_URL}/users/${userId}/reset-password`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        type: 'password',
+        value: newPassword,
+        temporary: false,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Échec de la réinitialisation du mot de passe dans Keycloak.');
+    }
   },
 
   async deleteRole(roleName) {

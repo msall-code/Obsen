@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { userService } from '../../../services/userService';
 
 export default function UserEditModal({ user, isOpen, onClose, onSave }) {
@@ -7,6 +7,7 @@ export default function UserEditModal({ user, isOpen, onClose, onSave }) {
         firstName: '',
         lastName: '',
         email: '',
+        password: '',
     });
 
     const [roles, setRoles] = useState([]);
@@ -16,47 +17,51 @@ export default function UserEditModal({ user, isOpen, onClose, onSave }) {
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        if (user && isOpen) {
-            setFormData({
-                username: user.username || '',
-                firstName: user.firstName || '',
-                lastName: user.lastName || '',
-                email: user.email || '',
-            });
+        if (!isOpen || !user) return;
 
-            const loadRoleData = async () => {
-                setLoading(true);
-                try {
-                    const [allRoles, currentRoles] = await Promise.all([
-                        userService.getAvailableRoles(),
-                        userService.getUserRoles(user.id),
-                    ]);
+        let isMounted = true;
 
-                    const filteredAll = allRoles.filter(
-                        (r) => !['default-roles-obsen-realm', 'offline_access', 'uma_authorization'].includes(r.name)
-                    );
+        const loadModalData = async () => {
+            setLoading(true);
+            try {
+                const [allRoles, currentRoles] = await Promise.all([
+                    userService.getAvailableRoles(),
+                    userService.getUserRoles(user.id),
+                ]);
 
-                    setRoles(filteredAll);
-                    setUserRoles(currentRoles);
+                if (!isMounted) return;
 
-                    const currentCustomRole = currentRoles.find((r) =>
-                        filteredAll.some((fa) => fa.id === r.id)
-                    );
+                const filteredAll = allRoles.filter(
+                    (r) => !['default-roles-obsen-realm', 'offline_access', 'uma_authorization'].includes(r.name)
+                );
 
-                    if (currentCustomRole) {
-                        setSelectedRoleId(currentCustomRole.id);
-                    } else {
-                        setSelectedRoleId('');
-                    }
-                } catch (err) {
-                    console.error('Erreur lors du chargement des rôles:', err);
-                } finally {
-                    setLoading(false);
-                }
-            };
+                const currentCustomRole = currentRoles.find((r) =>
+                    filteredAll.some((fa) => fa.id === r.id)
+                );
 
-            loadRoleData();
-        }
+                // Mises à jour groupées des états
+                setFormData({
+                    username: user.username || '',
+                    firstName: user.firstName || '',
+                    lastName: user.lastName || '',
+                    email: user.email || '',
+                    password: '',
+                });
+                setRoles(filteredAll);
+                setUserRoles(currentRoles);
+                setSelectedRoleId(currentCustomRole ? currentCustomRole.id : '');
+            } catch (err) {
+                console.error('Erreur lors du chargement des données utilisateur:', err);
+            } finally {
+                if (isMounted) setLoading(false);
+            }
+        };
+
+        loadModalData();
+
+        return () => {
+            isMounted = false;
+        };
     }, [user, isOpen]);
 
     if (!isOpen || !user) return null;
@@ -82,6 +87,12 @@ export default function UserEditModal({ user, isOpen, onClose, onSave }) {
                 targetRole,
                 userRoles
             );
+
+            if (formData.password.trim() !== '') {
+                if (userService.resetPassword) {
+                    await userService.resetPassword(user.id, formData.password.trim());
+                }
+            }
 
             onClose();
         } catch (err) {
@@ -109,7 +120,7 @@ export default function UserEditModal({ user, isOpen, onClose, onSave }) {
                 <form onSubmit={handleSubmit} className="space-y-3">
                     <div>
                         <label htmlFor="edit-username" className="text-xs font-semibold text-slate-500 uppercase">
-                            Nom d'utilisateur (Username) *
+                            Nom d'utilisateur *
                         </label>
                         <input
                             id="edit-username"
@@ -162,11 +173,25 @@ export default function UserEditModal({ user, isOpen, onClose, onSave }) {
                     </div>
 
                     <div>
+                        <label htmlFor="edit-password" className="text-xs font-semibold text-slate-500 uppercase">
+                            Nouveau mot de passe <span className="text-slate-400 font-normal">(optionnel)</span>
+                        </label>
+                        <input
+                            id="edit-password"
+                            type="password"
+                            placeholder="••••••••"
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            className="w-full mt-1 p-2.5 border border-slate-300 rounded-xl text-sm outline-none focus:border-blue-500"
+                        />
+                    </div>
+
+                    <div>
                         <label htmlFor="edit-role" className="text-xs font-semibold text-slate-500 uppercase">
                             Rôle Keycloak
                         </label>
                         {loading ? (
-                            <p className="text-xs text-slate-400 mt-1">Chargement des rôles Keycloak...</p>
+                            <p className="text-xs text-slate-400 mt-1">Chargement des rôles...</p>
                         ) : (
                             <select
                                 id="edit-role"

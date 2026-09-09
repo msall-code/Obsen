@@ -18,6 +18,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
+          # Note: Si Keycloak réponds sur /realms/Obsen-Realm sans /auth, retirez /auth
           issuer-uri: http://localhost:7089/auth/realms/Obsen-Realm
           jwk-set-uri: http://localhost:7089/auth/realms/Obsen-Realm/protocol/openid-connect/certs
 
@@ -32,4 +33,3 @@ management:
   endpoint:
     prometheus:
       enabled: true
-      

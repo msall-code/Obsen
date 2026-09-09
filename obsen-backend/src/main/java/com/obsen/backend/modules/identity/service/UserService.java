@@ -5,15 +5,15 @@ import org.springframework.stereotype.Service;
 
 import com.obsen.backend.modules.identity.dto.UserResponseDto;
 import com.obsen.backend.modules.identity.model.User;
-import com.obsen.backend.modules.identity.repository.UserProfileRepository;
+import com.obsen.backend.modules.identity.repository.UserRepository;
 
 @Service
 public class UserService {
 
-    private final UserProfileRepository userRepository;
+    private final UserRepository userRepository;
 
-    public UserService(UserProfileRepository userRepository) {
-        this.userRepository = userRepository; // <-- CORRIGÉ : this.userRepository au lieu de userProfileRepository
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
     /**
