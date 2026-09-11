@@ -18,30 +18,20 @@ import com.obsen.entity.User;
 import com.obsen.repository.UserRepository;
 
 import jakarta.ws.rs.core.Response;
+import lombok.RequiredArgsConstructor;
 
 @Service
+@RequiredArgsConstructor
 public class UserService {
 
-    private final Keycloak keycloak;
     private final UserRepository userRepository;
+    private final Keycloak keycloak;
 
     @Value("${keycloak.realm}")
     private String realm;
 
-    public UserService(Keycloak keycloak, UserRepository userRepository) {
-        this.keycloak = keycloak;
-        this.userRepository = userRepository;
-    }
-
     @Transactional
     public UserResponseDto createUser(UserCreateDto dto) {
-        if (userRepository.existsByUsername(dto.getUsername())) {
-            throw new IllegalArgumentException("Ce nom d'utilisateur existe déjà.");
-        }
-        if (userRepository.existsByEmail(dto.getEmail())) {
-            throw new IllegalArgumentException("Cet email existe déjà.");
-        }
-
         // 1. Création Keycloak
         UserRepresentation kcUser = new UserRepresentation();
         kcUser.setUsername(dto.getUsername());
@@ -50,23 +40,23 @@ public class UserService {
         kcUser.setLastName(dto.getLastName());
         kcUser.setEnabled(true);
 
-        CredentialRepresentation credential = new CredentialRepresentation();
-        credential.setType(CredentialRepresentation.PASSWORD);
-        credential.setValue(dto.getPassword());
-        credential.setTemporary(false);
-        kcUser.setCredentials(Collections.singletonList(credential));
+        CredentialRepresentation cred = new CredentialRepresentation();
+        cred.setType(CredentialRepresentation.PASSWORD);
+        cred.setValue(dto.getPassword());
+        cred.setTemporary(false);
+        kcUser.setCredentials(Collections.singletonList(cred));
 
         UsersResource usersResource = keycloak.realm(realm).users();
         Response response = usersResource.create(kcUser);
 
         if (response.getStatus() != 201) {
-            throw new RuntimeException("Erreur de création dans Keycloak. Status: " + response.getStatus());
+            throw new RuntimeException("Erreur de création Keycloak: " + response.getStatusInfo().getReasonPhrase());
         }
 
-        String keycloakId = response.getLocation().getPath().replaceAll(".*/", "");
+        String keycloakId = response.getLocation().getPath().replaceAll(".*/([^/]+)$", "$1");
 
-        // 2. Création PostgreSQL
-        User user = User.builder()
+        // 2. Création DB locale
+        User localUser = User.builder()
                 .keycloakId(keycloakId)
                 .username(dto.getUsername())
                 .email(dto.getEmail())
@@ -77,30 +67,18 @@ public class UserService {
                 .active(true)
                 .build();
 
-        User savedUser = userRepository.save(user);
-        return mapToResponseDto(savedUser);
+        userRepository.save(localUser);
+
+        return mapToResponse(localUser);
     }
 
     public List<UserResponseDto> getAllUsers() {
         return userRepository.findAll().stream()
-                .map(this::mapToResponseDto)
+                .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
-    @Transactional
-    public void deleteUser(Long id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable."));
-
-        // Supprimer de Keycloak
-        if (user.getKeycloakId() != null) {
-            keycloak.realm(realm).users().get(user.getKeycloakId()).remove();
-        }
-        // Supprimer de PostgreSQL
-        userRepository.delete(user);
-    }
-
-    private UserResponseDto mapToResponseDto(User user) {
+    private UserResponseDto mapToResponse(User user) {
         return UserResponseDto.builder()
                 .id(user.getId())
                 .keycloakId(user.getKeycloakId())

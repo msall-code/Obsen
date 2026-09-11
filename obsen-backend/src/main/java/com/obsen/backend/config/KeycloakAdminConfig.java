@@ -22,7 +22,7 @@ public class KeycloakAdminConfig {
     private String clientSecret;
 
     @Bean
-    public Keycloak keycloakAdminClient() {
+    public Keycloak keycloakAdmin() {
         return KeycloakBuilder.builder()
                 .serverUrl(serverUrl)
                 .realm(realm)
