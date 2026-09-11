@@ -1,3 +1,4 @@
+/*
 package com.obsen.backend.config;
 
 import java.util.Collection;
@@ -106,3 +107,4 @@ public class JwtAuthConverter implements Converter<Jwt, AbstractAuthenticationTo
         return authorities;
     }
 }
+*/

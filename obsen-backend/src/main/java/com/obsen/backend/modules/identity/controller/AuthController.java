@@ -1,7 +1,7 @@
 /*
 package com.obsen.backend.modules.identity.controller;
 
-public class SessionController {
+public class AuthController {
     
 }
 */

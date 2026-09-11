@@ -1,25 +1,29 @@
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import keycloak from '../keycloak';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-    const [user] = useState({
-        username: 'admin_obsen',
-        email: 'admin@obsen.sn',
-        roles: ['ROLE_ADMIN', 'ROLE_USER'],
-    });
+    const [user, setUser] = useState(null);
+    const [token, setToken] = useState(keycloak.token);
 
-    const value = useMemo(() => {
-        const hasRole = (requiredRoles) => {
-            if (!requiredRoles || requiredRoles.length === 0) return true;
-            return requiredRoles.some((role) => user?.roles?.includes(role));
-        };
+    useEffect(() => {
+        if (keycloak.authenticated) {
+            keycloak.loadUserProfile().then((profile) => {
+                setUser({
+                    ...profile,
+                    roles: keycloak.realmAccess ? keycloak.realmAccess.roles : [],
+                });
+            });
+        }
+    }, []);
 
-        return { user, hasRole };
-    }, [user]);
+    const logout = () => {
+        keycloak.logout({ redirectUri: window.location.origin });
+    };
 
     return (
-        <AuthContext.Provider value={value}>
+        <AuthContext.Provider value={{ user, token, logout, keycloak }}>
             {children}
         </AuthContext.Provider>
     );
