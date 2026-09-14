@@ -9,6 +9,7 @@ import com.obsen.backend.modules.identity.model.User;
 import com.obsen.backend.modules.identity.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,11 +29,11 @@ public class AuthService {
     @Transactional
     public AuthResponseDto register(RegisterRequestDto request) {
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Ce nom d'utilisateur est déjà utilisé.");
+            throw new IllegalArgumentException("Ce nom d'utilisateur est déjà utilisé.");
         }
 
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Cet email est déjà utilisé.");
+            throw new IllegalArgumentException("Cet email est déjà utilisé.");
         }
 
         User user = User.builder()
@@ -46,12 +47,12 @@ public class AuthService {
                 .active(true)
                 .build();
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
 
-        UserDetails userDetails = customUserDetailsService.loadUserByUsername(user.getUsername());
+        UserDetails userDetails = customUserDetailsService.loadUserByUsername(savedUser.getUsername());
         String jwtToken = jwtUtils.generateToken(userDetails);
 
-        return buildAuthResponse(user, jwtToken);
+        return buildAuthResponse(savedUser, jwtToken);
     }
 
     public AuthResponseDto login(LoginRequestDto request) {
@@ -63,7 +64,7 @@ public class AuthService {
         );
 
         User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé."));
+                .orElseThrow(() -> new BadCredentialsException("Utilisateur non trouvé."));
 
         UserDetails userDetails = customUserDetailsService.loadUserByUsername(user.getUsername());
         String jwtToken = jwtUtils.generateToken(userDetails);
