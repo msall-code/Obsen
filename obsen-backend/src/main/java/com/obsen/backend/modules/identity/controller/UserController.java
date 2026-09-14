@@ -1,20 +1,14 @@
-package com.obsen.controller;
+package com.obsen.backend.modules.identity.controller;
+
+import com.obsen.backend.modules.identity.dto.AuthResponseDto;
+import com.obsen.backend.modules.identity.dto.UserUpdateRequestDto;
+import com.obsen.backend.modules.identity.service.UserService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.obsen.dto.UserCreateDto;
-import com.obsen.dto.UserResponseDto;
-import com.obsen.service.UserService;
-
-import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/users")
@@ -23,13 +17,37 @@ public class UserController {
 
     private final UserService userService;
 
-    @PostMapping
-    public ResponseEntity<UserResponseDto> createUser(@RequestBody UserCreateDto dto) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(dto));
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISEUR')")
+    public ResponseEntity<List<AuthResponseDto>> getAllUsers() {
+        return ResponseEntity.ok(userService.getAllUsers());
     }
 
-    @GetMapping
-    public ResponseEntity<List<UserResponseDto>> getAllUsers() {
-        return ResponseEntity.ok(userService.getAllUsers());
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISEUR')")
+    public ResponseEntity<AuthResponseDto> getUserById(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.getUserById(id));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<AuthResponseDto> updateUser(
+            @PathVariable Long id,
+            @RequestBody UserUpdateRequestDto request
+    ) {
+        return ResponseEntity.ok(userService.updateUser(id, request));
+    }
+
+    @PatchMapping("/{id}/toggle-status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<AuthResponseDto> toggleUserStatus(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.toggleUserStatus(id));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
     }
 }

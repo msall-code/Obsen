@@ -1,22 +1,16 @@
 import axios from 'axios';
-import keycloak from '../keycloak';
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
 });
 
-api.interceptors.request.use(async (config) => {
-    if (keycloak.authenticated) {
-        try {
-            await keycloak.updateToken(30);
-        } catch (error) {
-            keycloak.login();
-        }
-        config.headers.Authorization = `Bearer ${keycloak.token}`;
+// Intercepteur : Ajoute automatiquement le token JWT à toutes les requêtes
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
-}, (error) => {
-    return Promise.reject(error);
 });
 
 export default api;
