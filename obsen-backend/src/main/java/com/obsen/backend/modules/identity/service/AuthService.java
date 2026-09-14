@@ -42,7 +42,7 @@ public class AuthService {
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .region(request.getRegion())
-                .role(request.getRole() != null ? request.getRole() : Role.AGENT)
+                .role(((request.getRole() != null) ? request.getRole() : Role.AGENT).name())
                 .active(true)
                 .build();
 
@@ -80,7 +80,7 @@ public class AuthService {
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
                 .region(user.getRegion())
-                .role(user.getRole().name())
+                .role(user.getRole())
                 .build();
     }
 }

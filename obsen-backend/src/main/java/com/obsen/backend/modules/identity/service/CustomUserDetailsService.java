@@ -28,8 +28,8 @@ public class CustomUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("Le compte de l'utilisateur est désactivé.");
         }
 
-        // On préfixe le rôle par "ROLE_" selon la convention Spring Security (ex: ROLE_ADMIN, ROLE_AGENT)
-        SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + user.getRole().name());
+        // Parenthese fermante ajoutée ici : user.getRole()
+        SimpleGrantedAuthority authority = new SimpleGrantedAuthority(user.getRole());
 
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(),
