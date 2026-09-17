@@ -1,6 +1,7 @@
 package com.obsen.obsen_backend.modules.identity.service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -11,9 +12,11 @@ import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.obsen.obsen_backend.modules.identity.dto.UpdateRolesRequest;
 import com.obsen.obsen_backend.modules.identity.dto.UserRequestDto;
@@ -21,6 +24,7 @@ import com.obsen.obsen_backend.modules.identity.dto.UserResponseDto;
 import com.obsen.obsen_backend.modules.identity.model.User;
 import com.obsen.obsen_backend.modules.identity.repository.UserRepository;
 
+import jakarta.ws.rs.ForbiddenException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,8 +34,8 @@ import lombok.extern.slf4j.Slf4j;
 public class IdentityService {
 
     private static final Set<String> IGNORED_SYSTEM_ROLES = Set.of(
-            "offline_access", 
-            "uma_authorization", 
+            "offline_access",
+            "uma_authorization",
             "default-roles-obsen-realm"
     );
 
@@ -69,8 +73,8 @@ public class IdentityService {
             return keycloakUsers.stream().map(kcUser -> {
                 List<String> roles = fetchFilteredRoles(kcUser.getId());
 
-                Instant createdAt = kcUser.getCreatedTimestamp() != null 
-                        ? Instant.ofEpochMilli(kcUser.getCreatedTimestamp()) 
+                Instant createdAt = kcUser.getCreatedTimestamp() != null
+                        ? Instant.ofEpochMilli(kcUser.getCreatedTimestamp())
                         : Instant.now();
 
                 return UserResponseDto.builder()
@@ -104,9 +108,15 @@ public class IdentityService {
             UserResource userResource = keycloak.realm(realm).users().get(keycloakId);
             UserRepresentation kcUser = userResource.toRepresentation();
 
-            if (dto.getFirstName() != null) kcUser.setFirstName(dto.getFirstName());
-            if (dto.getLastName() != null) kcUser.setLastName(dto.getLastName());
-            if (dto.getEmail() != null) kcUser.setEmail(dto.getEmail());
+            if (dto.getFirstName() != null) {
+                kcUser.setFirstName(dto.getFirstName());
+            }
+            if (dto.getLastName() != null) {
+                kcUser.setLastName(dto.getLastName());
+            }
+            if (dto.getEmail() != null) {
+                kcUser.setEmail(dto.getEmail());
+            }
             if (dto.getUsername() != null && !dto.getUsername().isBlank()) {
                 kcUser.setUsername(dto.getUsername());
             }
@@ -127,9 +137,15 @@ public class IdentityService {
 
     private void updateLocalDatabaseUser(String keycloakId, UserRequestDto dto) {
         userRepository.findById(keycloakId).ifPresent(user -> {
-            if (dto.getFirstName() != null) user.setFirstName(dto.getFirstName());
-            if (dto.getLastName() != null) user.setLastName(dto.getLastName());
-            if (dto.getEmail() != null) user.setEmail(dto.getEmail());
+            if (dto.getFirstName() != null) {
+                user.setFirstName(dto.getFirstName());
+            }
+            if (dto.getLastName() != null) {
+                user.setLastName(dto.getLastName());
+            }
+            if (dto.getEmail() != null) {
+                user.setEmail(dto.getEmail());
+            }
             if (dto.getUsername() != null && !dto.getUsername().isBlank()) {
                 user.setUsername(dto.getUsername());
             }
@@ -154,30 +170,50 @@ public class IdentityService {
         });
     }
 
-    @Transactional
-    public void updateUserRoles(String keycloakId, UpdateRolesRequest request) {
-        UserResource userResource = keycloak.realm(realm).users().get(keycloakId);
+    public void updateUserRoles(String userId, UpdateRolesRequest request) {
+        try {
+            UserResource userResource = keycloak.realm(realm).users().get(userId);
 
-        List<RoleRepresentation> allRealmRoles = keycloak.realm(realm).roles().list();
-
-        List<RoleRepresentation> currentAssignedRoles = userResource.roles().realmLevel().listAll();
-        List<RoleRepresentation> rolesToRemove = currentAssignedRoles.stream()
-                .filter(role -> role != null && !IGNORED_SYSTEM_ROLES.contains(role.getName()))
-                .toList();
-
-        if (!rolesToRemove.isEmpty()) {
-            userResource.roles().realmLevel().remove(rolesToRemove);
-        }
-
-        if (request.getRoles() != null && !request.getRoles().isEmpty()) {
-            List<RoleRepresentation> rolesToAssign = allRealmRoles.stream()
-                    .filter(role -> role != null && request.getRoles().stream()
-                            .anyMatch(reqRole -> reqRole.equalsIgnoreCase(role.getName())))
+            // 1. Récupérer uniquement les rôles Realm gérables (hors rôles système)
+            List<RoleRepresentation> currentRoles = userResource.roles().realmLevel().listAll();
+            List<RoleRepresentation> rolesToRemove = currentRoles.stream()
+                    .filter(role -> role != null && !IGNORED_SYSTEM_ROLES.contains(role.getName()))
                     .toList();
 
-            if (!rolesToAssign.isEmpty()) {
-                userResource.roles().realmLevel().add(rolesToAssign);
+            // Supprimer uniquement les rôles personnalisés
+            if (!rolesToRemove.isEmpty()) {
+                userResource.roles().realmLevel().remove(rolesToRemove);
             }
+
+            // 2. Récupérer et vérifier les nouveaux rôles à ajouter
+            if (request.getRoles() != null && !request.getRoles().isEmpty()) {
+                List<RoleRepresentation> rolesToAdd = new ArrayList<>();
+                for (String roleName : request.getRoles()) {
+                    if (IGNORED_SYSTEM_ROLES.contains(roleName)) {
+                        continue;
+                    }
+                    RoleRepresentation role = findRoleByName(roleName);
+                    if (role != null) {
+                        rolesToAdd.add(role);
+                    }
+                }
+
+                if (!rolesToAdd.isEmpty()) {
+                    userResource.roles().realmLevel().add(rolesToAdd);
+                }
+            }
+        } catch (ForbiddenException e) {
+            log.error("Erreur 403 Keycloak lors de la modification des rôles pour l'utilisateur {}", userId, e);
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Droits insuffisants dans Keycloak pour modifier ces rôles", e);
+        }
+    }
+
+    private RoleRepresentation findRoleByName(String roleName) {
+        try {
+            return keycloak.realm(realm).roles().get(roleName).toRepresentation();
+        } catch (jakarta.ws.rs.NotFoundException e) {
+            log.warn("Le rôle {} n'existe pas dans le realm Keycloak {}", roleName, realm);
+            return null;
         }
     }
 
@@ -199,7 +235,7 @@ public class IdentityService {
             return keycloak.realm(realm).users().get(keycloakId)
                     .roles().realmLevel().listAll().stream()
                     .filter(Objects::nonNull)
-                    .map(role -> role.getName())
+                    .map(RoleRepresentation::getName)
                     .filter(name -> name != null && !IGNORED_SYSTEM_ROLES.contains(name))
                     .toList();
         } catch (Exception e) {
