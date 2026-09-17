@@ -1,27 +1,62 @@
+server:
+  port: 8080
+  servlet:
+    session:
+      cookie:
+        name: OBSEN_SESSION
+        http-only: true
+        secure: false # Passer à 'true' en production avec HTTPS
+        same-site: STRICT
+
 spring:
   application:
     name: obsen-backend
 
+  # Configuration Base de données PostgreSQL
   datasource:
     url: jdbc:postgresql://localhost:5439/obsen_sre_db
     username: obsen_user
     password: ${DB_PASSWORD:obsen_password}
     driver-class-name: org.postgresql.Driver
 
+  # Configuration JPA / Hibernate
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
     open-in-view: false
 
+  # Configuration Security OAuth2 Client (BFF) & Resource Server
   security:
     oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: obsen-backend-client
+            client-secret: ${KEYCLOAK_CLIENT_SECRET:votre-client-secret}
+            scope: openid, profile, email, roles
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:7089/auth/realms/Obsen-Realm
       resourceserver:
         jwt:
-          # Note: Si Keycloak réponds sur /realms/Obsen-Realm sans /auth, retirez /auth
           issuer-uri: http://localhost:7089/auth/realms/Obsen-Realm
           jwk-set-uri: http://localhost:7089/auth/realms/Obsen-Realm/protocol/openid-connect/certs
 
+# Configuration OpenAPI / Swagger UI
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+# Configuration Actuator (Health, Info, Metrics)
 management:
   endpoints:
     web:
@@ -29,7 +64,7 @@ management:
         include: "health,info,prometheus"
       cors:
         allowed-origins: "http://localhost:5173"
-        allowed-methods: "GET,POST,PUT,DELETE"
+        allowed-methods: "GET,POST,PUT,DELETE,OPTIONS"
   endpoint:
     prometheus:
       enabled: true

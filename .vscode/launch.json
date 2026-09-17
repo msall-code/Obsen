@@ -2,10 +2,10 @@
     "configurations": [
         {
             "type": "java",
-            "name": "Spring Boot-BackendApplication<obsen-backend>",
+            "name": "Spring Boot-ObsenBackendApplication<obsen-backend>",
             "request": "launch",
             "cwd": "${workspaceFolder}",
-            "mainClass": "com.obsen.backend.BackendApplication",
+            "mainClass": "com.obsen.obsen_backend.ObsenBackendApplication",
             "projectName": "obsen-backend",
             "args": "",
             "envFile": "${workspaceFolder}/.env"
