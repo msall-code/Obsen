@@ -1,4 +1,4 @@
-package com.obsen.config;
+package com.obsen.obsen_backend.config;
 
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
@@ -9,13 +9,13 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class KeycloakAdminConfig {
 
-    @Value("${keycloak.server-url}")
+    @Value("${keycloak.server-url:http://localhost:7089/auth}")
     private String serverUrl;
 
-    @Value("${keycloak.realm}")
+    @Value("${keycloak.realm:Obsen-Realm}")
     private String realm;
 
-    @Value("${keycloak.client-id}")
+    @Value("${keycloak.client-id:obsen-backend-client}")
     private String clientId;
 
     @Value("${keycloak.client-secret}")

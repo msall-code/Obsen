@@ -48,6 +48,13 @@ spring:
           issuer-uri: http://localhost:7089/auth/realms/Obsen-Realm
           jwk-set-uri: http://localhost:7089/auth/realms/Obsen-Realm/protocol/openid-connect/certs
 
+# Propriétés Keycloak Admin API
+keycloak:
+  server-url: http://localhost:7089/auth
+  realm: Obsen-Realm
+  client-id: obsen-backend-client
+  client-secret: ${KEYCLOAK_CLIENT_SECRET:FCGU8IijjZabaI8XBCIPj0Q6KfhonLQTOQ3MKC64dtMwgF6R1fZ8K6jF42rSMOVRk5sb8N2ryRjptxwHrhUU4g}
+
 # Configuration OpenAPI / Swagger UI
 springdoc:
   api-docs:

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import keycloak from '../config/keycloak';
 
 export const Navbar = () => {
-    const roles = keycloak.realmAccess?.roles || [];
+    const roles = (keycloak.realmAccess?.roles || []).map(r => r.toUpperCase());
     const isAdmin = roles.includes('ADMIN');
 
     return (
@@ -10,7 +10,6 @@ export const Navbar = () => {
             <Link to="/">Dashboard</Link>
             <Link to="/profile">Mon Profil</Link>
 
-            {/* Afficher le lien Admin uniquement si l'utilisateur possède le rôle ADMIN */}
             {isAdmin && (
                 <Link to="/admin" style={{ color: 'red', fontWeight: 'bold' }}>
                     Administration

@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar';
 import { PrivateRoute } from './components/PrivateRoute';
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { ProfileCard } from './features/identity/components/ProfileCard';
+import { UserManagementTable } from './features/identity/components/UserManagementTable';
 
 function App() {
   return (
@@ -16,7 +17,10 @@ function App() {
             path="/admin"
             element={
               <PrivateRoute requiredRole="ADMIN">
-                <div><h2>Espace Administrateur Obsen</h2></div>
+                <div>
+                  <h2>Espace Administrateur Obsen</h2>
+                  <UserManagementTable />
+                </div>
               </PrivateRoute>
             }
           />

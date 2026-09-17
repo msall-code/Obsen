@@ -1,33 +1,179 @@
-import { useEffect, useState, useMemo } from 'react';
-import { getAllUsers, deleteUserById } from '../services/identityService';
-import type { UserProfile } from '../types';
-import { RoleManagerModal } from './RoleManagerModal';
+import React, { useState, useEffect } from 'react';
+import axiosInstance from '../../../api/axiosInstance';
 
-const ITEMS_PER_PAGE = 5;
+export interface User {
+    keycloakId: string;
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    roles: string[];
+}
 
-export const UserManagementTable = () => {
-    const [users, setUsers] = useState<UserProfile[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
+interface EditUserModalProps {
+    user: User;
+    onClose: () => void;
+    onRefresh: () => void;
+}
 
-    // États pour la recherche et la pagination
-    const [searchTerm, setSearchTerm] = useState<string>('');
-    const [currentPage, setCurrentPage] = useState<number>(1);
+export const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onRefresh }) => {
+    const [formData, setFormData] = useState({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        password: '',
+    });
 
-    // État pour gérer le modal d'édition des rôles
-    const [selectedUserForRoles, setSelectedUserForRoles] = useState<UserProfile | null>(null);
+    const [selectedRoles, setSelectedRoles] = useState<string[]>(user.roles || []);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+    const handleRoleToggle = (role: string) => {
+        if (selectedRoles.includes(role)) {
+            setSelectedRoles(selectedRoles.filter((r) => r !== role));
+        } else {
+            setSelectedRoles([...selectedRoles, role]);
+        }
+    };
+
+    const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setErrorMessage(null);
+
+        try {
+            // 1. Mise à jour des informations utilisateur (Prénom, Nom, Email, Mot de passe)
+            const userPayload: Record<string, string> = {
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                email: formData.email,
+            };
+
+            if (formData.password.trim() !== '') {
+                userPayload.password = formData.password;
+            }
+
+            await axiosInstance.put(`/api/v1/identity/users/${user.keycloakId}`, userPayload);
+
+            // 2. Mise à jour des rôles (Conforme à UpdateRolesRequest Java)
+            await axiosInstance.put(
+                `/api/v1/identity/users/${user.keycloakId}/roles`,
+                { roles: selectedRoles }
+            );
+
+            onRefresh();
+            onClose();
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
+            console.error("Erreur lors de la mise à jour :", error.response?.data || err);
+            setErrorMessage(
+                error.response?.data?.message || "Une erreur est survenue lors de la mise à jour des rôles."
+            );
+        }
+    };
+
+    return (
+        <div className="modal-backdrop">
+            <div className="modal-content">
+                <h3>Éditer l'utilisateur : {user.username}</h3>
+                {errorMessage && <div style={{ color: 'red', marginBottom: '10px' }}>{errorMessage}</div>}
+
+                <form onSubmit={handleSubmit}>
+                    <div>
+                        <label htmlFor="firstName">Prénom :</label>
+                        <input
+                            id="firstName"
+                            type="text"
+                            value={formData.firstName}
+                            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="lastName">Nom :</label>
+                        <input
+                            id="lastName"
+                            type="text"
+                            value={formData.lastName}
+                            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="email">Email :</label>
+                        <input
+                            id="email"
+                            type="email"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="password">Nouveau mot de passe (optionnel) :</label>
+                        <input
+                            id="password"
+                            type="password"
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        />
+                    </div>
+
+                    <fieldset style={{ marginTop: '15px', border: 'none', padding: 0 }}>
+                        <legend id="roles-label">Rôles attribués :</legend>
+                        <div>
+                            <label htmlFor="role-user">
+                                <input
+                                    id="role-user"
+                                    type="checkbox"
+                                    checked={selectedRoles.includes('User') || selectedRoles.includes('ROLE_USER') || selectedRoles.includes('USER')}
+                                    onChange={() => handleRoleToggle('User')}
+                                />
+                                {' User'}
+                            </label>
+
+                            <label htmlFor="role-admin" style={{ marginLeft: '10px' }}>
+                                <input
+                                    id="role-admin"
+                                    type="checkbox"
+                                    checked={selectedRoles.includes('Admin') || selectedRoles.includes('ROLE_ADMIN') || selectedRoles.includes('ADMIN')}
+                                    onChange={() => handleRoleToggle('Admin')}
+                                />
+                                {' Admin'}
+                            </label>
+                        </div>
+                    </fieldset>
+
+                    <div style={{ marginTop: '20px' }}>
+                        <button type="submit">Enregistrer</button>
+                        <button type="button" onClick={onClose} style={{ marginLeft: '10px' }}>
+                            Annuler
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+export const UserManagementTable: React.FC = () => {
+    const [users, setUsers] = useState<User[]>([]);
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
     const fetchUsers = async () => {
         try {
-            setLoading(true);
-            const data = await getAllUsers();
-            setUsers(data);
-            setError(null);
-        } catch (err: unknown) {
-            console.error('Erreur chargement utilisateurs :', err);
-            setError('Impossible de charger la liste des utilisateurs.');
-        } finally {
-            setLoading(false);
+            const response = await axiosInstance.get('/api/v1/identity/users');
+            const data = response.data;
+
+            if (Array.isArray(data)) {
+                setUsers(data);
+            } else if (data && Array.isArray((data as { content?: User[] }).content)) {
+                setUsers((data as { content: User[] }).content);
+            } else {
+                console.error("Format de réponse inattendu pour les utilisateurs :", data);
+                setUsers([]);
+            }
+        } catch (err) {
+            console.error('Erreur lors du chargement des utilisateurs', err);
+            setUsers([]);
         }
     };
 
@@ -35,123 +181,37 @@ export const UserManagementTable = () => {
         fetchUsers();
     }, []);
 
-    const filteredUsers = useMemo(() => {
-        return users.filter((user) => {
-            const term = searchTerm.toLowerCase();
-            return (
-                user.username.toLowerCase().includes(term) ||
-                user.email.toLowerCase().includes(term) ||
-                `${user.firstName} ${user.lastName}`.toLowerCase().includes(term)
-            );
-        });
-    }, [users, searchTerm]);
-
-    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSearchTerm(e.target.value);
-        setCurrentPage(1);
-    };
-
-    const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE) || 1;
-    const paginatedUsers = useMemo(() => {
-        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-        return filteredUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-    }, [filteredUsers, currentPage]);
-
-    const handleDelete = async (keycloakId: string, username: string) => {
-        if (window.confirm(`Voulez-vous vraiment supprimer l'utilisateur "${username}" ?`)) {
-            try {
-                await deleteUserById(keycloakId);
-                setUsers((prev) => prev.filter((u) => u.keycloakId !== keycloakId));
-            } catch (err: unknown) {
-                console.error('Erreur lors de la suppression :', err);
-                alert('Échec de la suppression. Vérifiez vos permissions ADMIN.');
-            }
-        }
-    };
-
-    if (loading) return <p>Chargement des utilisateurs...</p>;
-    if (error) return <p style={{ color: 'red' }}>{error}</p>;
-
     return (
-        <div style={{ marginTop: '1.5rem' }}>
-            <h3>Liste des Utilisateurs ({filteredUsers.length})</h3>
-
-            {/* Barre de recherche */}
-            <div style={{ marginBottom: '1rem' }}>
-                <input
-                    type="text"
-                    placeholder="Rechercher par nom, email ou username..."
-                    value={searchTerm}
-                    onChange={handleSearchChange}
-                    style={{
-                        padding: '8px 12px',
-                        width: '100%',
-                        maxWidth: '400px',
-                        borderRadius: '4px',
-                        border: '1px solid #ccc'
-                    }}
-                />
-            </div>
-
-            {/* Tableau des données */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
+        <div>
+            <h3>Gestion des Utilisateurs</h3>
+            <table>
                 <thead>
-                    <tr style={{ background: '#f4f4f4', textAlign: 'left' }}>
-                        <th style={{ padding: '8px', border: '1px solid #ddd' }}>Username</th>
-                        <th style={{ padding: '8px', border: '1px solid #ddd' }}>Nom Complet</th>
-                        <th style={{ padding: '8px', border: '1px solid #ddd' }}>Email</th>
-                        <th style={{ padding: '8px', border: '1px solid #ddd' }}>Statut</th>
-                        <th style={{ padding: '8px', border: '1px solid #ddd' }}>Actions</th>
+                    <tr>
+                        <th>Nom d'utilisateur</th>
+                        <th>Email</th>
+                        <th>Prénom</th>
+                        <th>Nom</th>
+                        <th>Rôles</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {paginatedUsers.length > 0 ? (
-                        paginatedUsers.map((user) => (
+                    {Array.isArray(users) && users.length > 0 ? (
+                        users.map((user) => (
                             <tr key={user.keycloakId}>
-                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>{user.username}</td>
-                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>{user.firstName} {user.lastName}</td>
-                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>{user.email}</td>
-                                <td style={{ padding: '8px', border: '1px solid #ddd' }}>
-                                    <span style={{ color: user.active ? 'green' : 'red', fontWeight: 'bold' }}>
-                                        {user.active ? 'Actif' : 'Inactif'}
-                                    </span>
-                                </td>
-                                <td style={{ padding: '8px', border: '1px solid #ddd', display: 'flex', gap: '8px' }}>
-                                    {/* Bouton pour ouvrir le modal d'édition des rôles */}
-                                    <button
-                                        onClick={() => setSelectedUserForRoles(user)}
-                                        style={{
-                                            backgroundColor: '#2563eb',
-                                            color: 'white',
-                                            border: 'none',
-                                            padding: '4px 8px',
-                                            borderRadius: '4px',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        Gérer les Rôles
-                                    </button>
-
-                                    {/* Bouton de suppression */}
-                                    <button
-                                        onClick={() => handleDelete(user.keycloakId, user.username)}
-                                        style={{
-                                            backgroundColor: '#d9534f',
-                                            color: 'white',
-                                            border: 'none',
-                                            padding: '4px 8px',
-                                            borderRadius: '4px',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        Supprimer
-                                    </button>
+                                <td>{user.username}</td>
+                                <td>{user.email}</td>
+                                <td>{user.firstName}</td>
+                                <td>{user.lastName}</td>
+                                <td>{user.roles?.join(', ')}</td>
+                                <td>
+                                    <button onClick={() => setSelectedUser(user)}>Éditer</button>
                                 </td>
                             </tr>
                         ))
                     ) : (
                         <tr>
-                            <td colSpan={5} style={{ textAlign: 'center', padding: '12px' }}>
+                            <td colSpan={6} style={{ textAlign: 'center' }}>
                                 Aucun utilisateur trouvé.
                             </td>
                         </tr>
@@ -159,39 +219,11 @@ export const UserManagementTable = () => {
                 </tbody>
             </table>
 
-            {/* Pagination */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
-                <button
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage((prev) => prev - 1)}
-                    style={{ padding: '6px 12px', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
-                >
-                    Précédent
-                </button>
-
-                <span>
-                    Page <strong>{currentPage}</strong> sur <strong>{totalPages}</strong>
-                </span>
-
-                <button
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage((prev) => prev + 1)}
-                    style={{ padding: '6px 12px', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
-                >
-                    Suivant
-                </button>
-            </div>
-
-            {/* Affichage conditionnel du modal */}
-            {selectedUserForRoles && (
-                <RoleManagerModal
-                    keycloakId={selectedUserForRoles.keycloakId}
-                    username={selectedUserForRoles.username}
-                    currentRoles={selectedUserForRoles.roles || []}
-                    onClose={() => setSelectedUserForRoles(null)}
-                    onSuccess={() => {
-                        fetchUsers(); // Rafraîchir la liste après modification des rôles
-                    }}
+            {selectedUser && (
+                <EditUserModal
+                    user={selectedUser}
+                    onClose={() => setSelectedUser(null)}
+                    onRefresh={fetchUsers}
                 />
             )}
         </div>

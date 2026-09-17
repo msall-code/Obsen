@@ -8,19 +8,16 @@ interface PrivateRouteProps {
 }
 
 export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredRole }) => {
-    // 1. Vérifier si l'utilisateur est authentifié
     if (!keycloak.authenticated) {
         keycloak.login();
         return null;
     }
 
-    // 2. Vérifier si un rôle particulier est exigé
     if (requiredRole) {
-        const roles = keycloak.realmAccess?.roles || [];
-        const hasRole = roles.includes(requiredRole);
+        const roles = (keycloak.realmAccess?.roles || []).map(r => r.toUpperCase());
+        const hasRole = roles.includes(requiredRole.toUpperCase());
 
         if (!hasRole) {
-            // Redirection si l'utilisateur n'a pas le rôle
             return <Navigate to="/" replace />;
         }
     }
