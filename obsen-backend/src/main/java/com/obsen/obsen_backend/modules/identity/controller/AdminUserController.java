@@ -10,12 +10,11 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/admin/users")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasRole('Admin')") // "Admin" correspond exactement au nom du rôle dans Keycloak
 public class AdminUserController {
 
     private final AdminUserService adminUserService;
 
-    // Constructeur explicite pour la dépendance Spring
     public AdminUserController(AdminUserService adminUserService) {
         this.adminUserService = adminUserService;
     }

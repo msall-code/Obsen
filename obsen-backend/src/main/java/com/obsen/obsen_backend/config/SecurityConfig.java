@@ -2,6 +2,7 @@ package com.obsen.obsen_backend.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -15,7 +16,15 @@ import io.swagger.v3.oas.annotations.security.SecurityScheme;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity // Permet d'activer l'évaluation de @PreAuthorize
 public class SecurityConfig {
+
+    private final KeycloakRoleConverter keycloakRoleConverter;
+
+    // Injection par constructeur
+    public SecurityConfig(KeycloakRoleConverter keycloakRoleConverter) {
+        this.keycloakRoleConverter = keycloakRoleConverter;
+    }
 
     @Bean
     @SuppressWarnings("java:S4502")
@@ -34,13 +43,15 @@ public class SecurityConfig {
                     "/actuator/health"
                 ).permitAll()
                 
-                // 2. AJOUT : Accès public pour la création de compte et la connexion
+                // 2. Accès public pour la création de compte et la connexion
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 
-                // 3. Tout le reste (ex: /api/v1/admin/**) nécessite un token JWT valide
+                // 3. Tout le reste nécessite un token JWT valide
                 .anyRequest().authenticated()
             )
-            .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}));
+            .oauth2ResourceServer(oauth2 -> oauth2
+                .jwt(jwt -> jwt.jwtAuthenticationConverter(keycloakRoleConverter))
+            );
 
         return http.build();
     }
