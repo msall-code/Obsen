@@ -150,6 +150,8 @@ services:
       - "8081:8080"
     networks:
       - obsen-network
+    
+    
 
   # =========================================================================
   # 5. AUTOMATISATION / ENGINE SRE (Port : 5679)
