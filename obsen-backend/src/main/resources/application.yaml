@@ -19,7 +19,7 @@ spring:
     password: ${DB_PASSWORD:obsen_password}
     driver-class-name: org.postgresql.Driver
 
-  # Configuration JPA / Hibernate
+  # Configuration JPA / Hibernate    
   jpa:
     hibernate:
       ddl-auto: update

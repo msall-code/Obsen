@@ -25,4 +25,4 @@ api.interceptors.request.use(async (config) => {
     return Promise.reject(error);
 });
 
-export default api;
+export default api;  
