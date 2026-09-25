@@ -44,4 +44,5 @@ public class ObservationController {
     public ResponseEntity<ObservationResponse> getById(@PathVariable("id") Long id) {
         return ResponseEntity.ok(observationService.getObservationById(id));
     }
+    
 }
