@@ -2,17 +2,18 @@ import React, { useState, useEffect } from 'react';
 import keycloak from './keycloak';
 import AdminUsers from './pages/AdminUsers';
 import { 
-  ShieldCheck, LogIn, LogOut, Users, 
-  Activity, LayoutDashboard, ShieldAlert
+  ShieldCheck, LogOut, Users, 
+  Activity, LayoutDashboard
 } from 'lucide-react';
 
 export default function App({ authenticated }) {
-  // Normalisation des rôles en majuscules pour éviter les conflits "Admin" vs "ADMIN"
-  const realmRoles = (keycloak.tokenParsed?.realm_access?.roles || []).map(r => r.toUpperCase());
-  const isAdmin = realmRoles.includes('ADMIN') || realmRoles.includes('REALM-ADMIN');
+  // Conversion en Set de majuscules pour optimiser la recherche d'existence (SonarLint S7776)
+  const realmRoles = new Set(
+    (keycloak.tokenParsed?.realm_access?.roles || []).map(r => r.toUpperCase())
+  );
+  const isAdmin = realmRoles.has('ADMIN') || realmRoles.has('REALM-ADMIN');
   
   const username = keycloak.tokenParsed?.preferred_username || 'Utilisateur';
-  const email = keycloak.tokenParsed?.email || '';
 
   const [activeTab, setActiveTab] = useState('dashboard');
 
