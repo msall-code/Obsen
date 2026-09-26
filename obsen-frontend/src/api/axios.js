@@ -1,28 +1,19 @@
 import axios from 'axios';
-import keycloak from '../keycloak'; // S'assure de pointer vers src/keycloak.js
 
 const api = axios.create({
-    baseURL: 'http://localhost:8080/api/v1',
-    headers: {
-        'Content-Type': 'application/json',
-    },
+  baseURL: 'http://localhost:8080/api/v1',
 });
 
-// Intercepteur : injection dynamique du token JWT avant chaque requête
-api.interceptors.request.use(async (config) => {
-    if (keycloak.authenticated) {
-        try {
-            // Rafraîchit le token S'IL expire dans moins de 30 secondes
-            await keycloak.updateToken(30);
-            config.headers.Authorization = `Bearer ${keycloak.token}`;
-        } catch (error) {
-            console.warn("Session expirée, redirection vers login.ftl...", error);
-            keycloak.login();
-        }
+// Injection automatique du token Bearer avant chaque appel HTTP
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token'); // Ajustez selon votre gestion de session/token
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
-}, (error) => {
-    return Promise.reject(error);
-});
+  },
+  (error) => Promise.reject(error)
+);
 
-export default api;  
+export default api;
