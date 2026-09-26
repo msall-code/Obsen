@@ -19,7 +19,7 @@ spring:
     password: ${DB_PASSWORD:obsen_password}
     driver-class-name: org.postgresql.Driver
 
-  # Configuration JPA / Hibernate    
+  # Configuration JPA / Hibernate
   jpa:
     hibernate:
       ddl-auto: update
@@ -36,7 +36,7 @@ spring:
         registration:
           keycloak:
             client-id: obsen-backend-client
-            client-secret: ${KEYCLOAK_CLIENT_SECRET:votre-client-secret}
+            client-secret: ${KEYCLOAK_CLIENT_SECRET:FCGU8IijjZabaI8XBCIPj0Q6KfhonLQTOQ3MKC64dtMwgF6R1fZ8K6jF42rSMOVRk5sb8N2ryRjptxwHrhUU4g}
             scope: openid, profile, email, roles
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
@@ -48,12 +48,16 @@ spring:
           issuer-uri: http://localhost:7089/auth/realms/Obsen-Realm
           jwk-set-uri: http://localhost:7089/auth/realms/Obsen-Realm/protocol/openid-connect/certs
 
-# Propriétés Keycloak Admin API
+# Propriétés Keycloak Admin Client
 keycloak:
   server-url: http://localhost:7089/auth
   realm: Obsen-Realm
   client-id: obsen-backend-client
   client-secret: ${KEYCLOAK_CLIENT_SECRET:FCGU8IijjZabaI8XBCIPj0Q6KfhonLQTOQ3MKC64dtMwgF6R1fZ8K6jF42rSMOVRk5sb8N2ryRjptxwHrhUU4g}
+  admin:
+    realm: Obsen-Realm
+    username: ${KEYCLOAK_ADMIN_USERNAME:admin}
+    password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
 
 # Configuration OpenAPI / Swagger UI
 springdoc:
