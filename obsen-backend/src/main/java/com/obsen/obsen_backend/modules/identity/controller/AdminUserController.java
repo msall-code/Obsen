@@ -1,49 +1,91 @@
 package com.obsen.obsen_backend.modules.identity.controller;
 
-import com.obsen.obsen_backend.modules.identity.dto.response.UserResponse;
-import com.obsen.obsen_backend.modules.identity.service.AdminUserService;
+import org.keycloak.admin.client.Keycloak;
+import org.keycloak.representations.idm.CredentialRepresentation;
+import org.keycloak.representations.idm.RoleRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/admin/users")
-@PreAuthorize("hasRole('Admin')") // "Admin" correspond exactement au nom du rôle dans Keycloak
+@RequestMapping("/api/v1/admin")
 public class AdminUserController {
 
-    private final AdminUserService adminUserService;
+    private final Keycloak keycloak;
 
-    public AdminUserController(AdminUserService adminUserService) {
-        this.adminUserService = adminUserService;
+    @Value("${keycloak.admin.realm}")
+    private String realm;
+
+    public AdminUserController(Keycloak keycloak) {
+        this.keycloak = keycloak;
     }
 
-    @GetMapping
-    public ResponseEntity<List<UserResponse>> getAllUsers() {
-        return ResponseEntity.ok(adminUserService.getAllUsers());
+    // --- GESTION DES UTILISATEURS ---
+
+    // 1. Activer / Désactiver un compte utilisateur
+    @PutMapping("/users/{userId}/status")
+    public ResponseEntity<Void> toggleUserStatus(@PathVariable String userId, @RequestParam boolean enabled) {
+        UserRepresentation user = keycloak.realm(realm).users().get(userId).toRepresentation();
+        user.setEnabled(enabled);
+        keycloak.realm(realm).users().get(userId).update(user);
+        return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<UserResponse> getUserById(@PathVariable("id") String userId) {
-        return ResponseEntity.ok(adminUserService.getUserById(userId));
-    }
-
-    @PostMapping("/{id}/roles/{roleName}")
-    public ResponseEntity<Void> assignRole(@PathVariable("id") String userId, @PathVariable("roleName") String roleName) {
-        adminUserService.assignRoleToUser(userId, roleName);
+    // 2. Supprimer un compte utilisateur
+    @DeleteMapping("/users/{userId}")
+    public ResponseEntity<Void> deleteUser(@PathVariable String userId) {
+        keycloak.realm(realm).users().get(userId).remove();
         return ResponseEntity.noContent().build();
     }
 
-    @PatchMapping("/{id}/status")
-    public ResponseEntity<Void> toggleStatus(@PathVariable("id") String userId, @RequestParam("enabled") boolean enabled) {
-        adminUserService.toggleUserStatus(userId, enabled);
-        return ResponseEntity.noContent().build();
+    // 3. Modifier le mot de passe d'un utilisateur
+    @PutMapping("/users/{userId}/password")
+    public ResponseEntity<Void> resetPassword(@PathVariable String userId, @RequestBody String newPassword) {
+        CredentialRepresentation credential = new CredentialRepresentation();
+        credential.setType(CredentialRepresentation.PASSWORD);
+        credential.setValue(newPassword);
+        credential.setTemporary(false);
+
+        keycloak.realm(realm).users().get(userId).resetPassword(credential);
+        return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable("id") String userId) {
-        adminUserService.deleteUser(userId);
-        return ResponseEntity.noContent().build();
+    // 4. Mettre à jour les informations de l'utilisateur
+    @PutMapping("/users/{userId}")
+    public ResponseEntity<Void> updateUser(@PathVariable String userId, @RequestBody UserRepresentation updatedUser) {
+        UserRepresentation user = keycloak.realm(realm).users().get(userId).toRepresentation();
+        user.setFirstName(updatedUser.getFirstName());
+        user.setLastName(updatedUser.getLastName());
+        user.setEmail(updatedUser.getEmail());
+
+        keycloak.realm(realm).users().get(userId).update(user);
+        return ResponseEntity.ok().build();
+    }
+
+    // --- GESTION DES RÔLES ---
+
+    // 5. Lister tous les rôles du Realm
+    @GetMapping("/roles")
+    public ResponseEntity<List<RoleRepresentation>> getAllRoles() {
+        return ResponseEntity.ok(keycloak.realm(realm).roles().list());
+    }
+
+    // 6. Créer un nouveau rôle
+    @PostMapping("/roles")
+    public ResponseEntity<Void> createRole(@RequestBody RoleRepresentation role) {
+        keycloak.realm(realm).roles().create(role);
+        return ResponseEntity.ok().build();
+    }
+
+    // 7. Attribuer un rôle à un utilisateur
+    @PostMapping("/users/{userId}/roles/{roleName}")
+    public ResponseEntity<Void> assignRoleToUser(@PathVariable String userId, @PathVariable String roleName) {
+        RoleRepresentation role = keycloak.realm(realm).roles().get(roleName).toRepresentation();
+        keycloak.realm(realm).users().get(userId).roles().realmLevel().add(Collections.singletonList(role));
+        return ResponseEntity.ok().build();
     }
 }
