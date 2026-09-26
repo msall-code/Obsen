@@ -1,19 +1,20 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api/v1',
+    baseURL: 'http://localhost:8080/api/v1',
 });
 
-// Injection automatique du token Bearer avant chaque appel HTTP
+// Intercepteur pour injecter automatiquement le token JWT
 api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token'); // Ajustez selon votre gestion de session/token
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
+    (config) => {
+        // Remplacez 'token' par la clé exacte sous laquelle vous enregistrez le JWT
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
 );
 
 export default api;
