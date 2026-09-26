@@ -13,6 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/admin")
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"}, allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS})
 public class AdminUserController {
 
     private final Keycloak keycloak;
@@ -81,11 +82,40 @@ public class AdminUserController {
         return ResponseEntity.ok().build();
     }
 
-    // 7. Attribuer un rôle à un utilisateur
+    // 7. Modifier un rôle existant (Description / Nom)
+    @PutMapping("/roles/{roleName}")
+    public ResponseEntity<Void> updateRole(@PathVariable String roleName, @RequestBody RoleRepresentation updatedRole) {
+        RoleRepresentation role = keycloak.realm(realm).roles().get(roleName).toRepresentation();
+        if (updatedRole.getDescription() != null) {
+            role.setDescription(updatedRole.getDescription());
+        }
+        if (updatedRole.getName() != null && !updatedRole.getName().equalsIgnoreCase(roleName)) {
+            role.setName(updatedRole.getName());
+        }
+        keycloak.realm(realm).roles().get(roleName).update(role);
+        return ResponseEntity.ok().build();
+    }
+
+    // 8. Supprimer un rôle
+    @DeleteMapping("/roles/{roleName}")
+    public ResponseEntity<Void> deleteRole(@PathVariable String roleName) {
+        keycloak.realm(realm).roles().get(roleName).remove();
+        return ResponseEntity.noContent().build();
+    }
+
+    // 9. Attribuer un rôle à un utilisateur
     @PostMapping("/users/{userId}/roles/{roleName}")
     public ResponseEntity<Void> assignRoleToUser(@PathVariable String userId, @PathVariable String roleName) {
         RoleRepresentation role = keycloak.realm(realm).roles().get(roleName).toRepresentation();
         keycloak.realm(realm).users().get(userId).roles().realmLevel().add(Collections.singletonList(role));
+        return ResponseEntity.ok().build();
+    }
+
+    // 10. Retirer un rôle à un utilisateur
+    @DeleteMapping("/users/{userId}/roles/{roleName}")
+    public ResponseEntity<Void> removeRoleFromUser(@PathVariable String userId, @PathVariable String roleName) {
+        RoleRepresentation role = keycloak.realm(realm).roles().get(roleName).toRepresentation();
+        keycloak.realm(realm).users().get(userId).roles().realmLevel().remove(Collections.singletonList(role));
         return ResponseEntity.ok().build();
     }
 }
