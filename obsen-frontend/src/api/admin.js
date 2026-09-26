@@ -14,3 +14,7 @@ api.interceptors.request.use((config) => {
 }, (error) => Promise.reject(error));
 
 export default api;
+export const assignRoleToUserApi = async (userId, role) => {
+  // Remplacez '/admin/users/' et la structure par ce qu'attend votre backend
+  return await api.put(`/admin/users/${userId}/role`, { role });
+};
