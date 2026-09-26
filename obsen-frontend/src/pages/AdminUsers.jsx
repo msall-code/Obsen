@@ -203,7 +203,7 @@ export default function UserManagementPage() {
           <div className="border-b border-slate-100 pb-3 mb-4">
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <span className="bg-indigo-600 text-white w-6 h-6 rounded-full text-xs flex items-center justify-center">1</span>
-              Ajouter un Utilisateur
+              <span>Ajouter un Utilisateur</span>
             </h2>
           </div>
 
@@ -216,8 +216,9 @@ export default function UserManagementPage() {
           <form onSubmit={handleCreateUser} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Prénom</label>
+                <label htmlFor="user-firstname" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Prénom</label>
                 <input
+                  id="user-firstname"
                   type="text"
                   placeholder="Jean"
                   value={newUser.firstName}
@@ -226,8 +227,9 @@ export default function UserManagementPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nom</label>
+                <label htmlFor="user-lastname" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nom</label>
                 <input
+                  id="user-lastname"
                   type="text"
                   placeholder="Dupont"
                   value={newUser.lastName}
@@ -238,8 +240,9 @@ export default function UserManagementPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Email *</label>
+              <label htmlFor="user-email" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Email *</label>
               <input
+                id="user-email"
                 type="email"
                 placeholder="jean.dupont@example.com"
                 value={newUser.email}
@@ -251,8 +254,9 @@ export default function UserManagementPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Mot de passe *</label>
+                <label htmlFor="user-password" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Mot de passe *</label>
                 <input
+                  id="user-password"
                   type="password"
                   placeholder="••••••••"
                   value={newUser.password}
@@ -262,8 +266,9 @@ export default function UserManagementPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Rôle Initial</label>
+                <label htmlFor="user-role" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Rôle Initial</label>
                 <select
+                  id="user-role"
                   value={newUser.role}
                   onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                   className="w-full p-2.5 bg-slate-50 text-slate-900 border border-slate-300 rounded-lg focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-sm cursor-pointer"
@@ -290,7 +295,7 @@ export default function UserManagementPage() {
           <div className="border-b border-slate-100 pb-3 mb-4">
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <span className="bg-emerald-600 text-white w-6 h-6 rounded-full text-xs flex items-center justify-center">2</span>
-              Créer un Rôle
+              <span>Créer un Rôle</span>
             </h2>
           </div>
 
@@ -302,8 +307,9 @@ export default function UserManagementPage() {
 
           <form onSubmit={handleCreateRole} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nom du Rôle *</label>
+              <label htmlFor="role-name" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nom du Rôle *</label>
               <input
+                id="role-name"
                 type="text"
                 placeholder="Ex: MANAGER (devient ROLE_MANAGER)"
                 value={newRoleName}
@@ -314,8 +320,9 @@ export default function UserManagementPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Description</label>
+              <label htmlFor="role-description" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Description</label>
               <textarea
+                id="role-description"
                 rows="2"
                 placeholder="Description des accès accordés..."
                 value={roleDescription}
