@@ -7,13 +7,12 @@ import {
   resetUserPasswordApi,
   getRolesApi,
   createRoleApi,
-  assignRoleToUserApi,
 } from '../api/admin';
 
 import EditUserModal from '../components/admin/EditUserModal';
 import ResetPasswordModal from '../components/admin/ResetPasswordModal';
 
-// Rôles par défaut si l'API Spring Boot renvoie 404
+// Rôles par défaut si l'API Spring Boot renvoie une erreur
 const DEFAULT_ROLES = [
   { id: 1, name: 'ROLE_USER', description: 'Utilisateur standard' },
   { id: 2, name: 'ROLE_ADMIN', description: 'Administrateur système' },
@@ -61,7 +60,7 @@ export default function UserManagementPage() {
         console.error('Erreur utilisateurs:', err);
       }
 
-      // 2. Chargement des rôles avec fallback automatique pour éviter les plantages
+      // 2. Chargement des rôles
       try {
         const rolesRes = await getRolesApi();
         if (rolesRes.data && rolesRes.data.length > 0) {
@@ -96,7 +95,6 @@ export default function UserManagementPage() {
       await createRoleApi({ name: formattedRoleName, description: roleDescription });
       setRoleStatus({ type: 'success', msg: `Rôle "${formattedRoleName}" créé avec succès !` });
       
-      // Mise à jour locale immédiate
       setRoles((prev) => [...prev, { id: Date.now(), name: formattedRoleName, description: roleDescription }]);
       setNewRoleName('');
       setRoleDescription('');
@@ -129,19 +127,10 @@ export default function UserManagementPage() {
     }
   };
 
-  // --- CHANGEMENT DE RÔLE & MODIFICATION UTILISATEUR ---
+  // --- MODIFICATION UTILISATEUR & RÔLE ---
   const handleEditUser = async (userId, updatedData) => {
     try {
       await updateUserApi(userId, updatedData);
-
-      if (updatedData.role) {
-        try {
-          await assignRoleToUserApi(userId, updatedData.role);
-        } catch (roleErr) {
-          console.warn('L\'attribution de rôle via API a échoué:', roleErr);
-        }
-      }
-
       setIsEditModalOpen(false);
       fetchData();
     } catch (err) {
