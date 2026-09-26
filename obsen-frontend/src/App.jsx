@@ -1,84 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import keycloak from './keycloak';
-import api from './api/axios';
+import AdminUsers from './pages/AdminUsers';
 import { 
   ShieldCheck, LogIn, LogOut, Users, 
-  UserCheck, UserX, Activity, LayoutDashboard, 
-  Shield, Plus, Trash2, CheckCircle2, AlertCircle, RefreshCw
+  Activity, LayoutDashboard, ShieldAlert,
+  UserCheck, AlertCircle
 } from 'lucide-react';
 
 export default function App({ authenticated }) {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [users, setUsers] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
-  const [actionMessage, setActionMessage] = useState(null);
-  const [selectedUserForRole, setSelectedUserForRole] = useState(null);
-  const [newRoleName, setNewRoleName] = useState('');
-
-  // Rôles extraits du token Keycloak
-  const roles = keycloak.tokenParsed?.realm_access?.roles || [];
-  const isAdmin = roles.includes('ADMIN') || roles.includes('realm-admin');
+  // Extraction dynamique des rôles Realm Keycloak
+  const realmRoles = keycloak.tokenParsed?.realm_access?.roles || [];
+  const isAdmin = realmRoles.includes('ADMIN') || realmRoles.includes('realm-admin');
   const username = keycloak.tokenParsed?.preferred_username || 'Utilisateur';
+  const email = keycloak.tokenParsed?.email || '';
 
+  // Tab par défaut selon le rôle
+  const [activeTab, setActiveTab] = useState('dashboard');
+
+  // Sécurité : Rediriger si un simple USER essaie d'aller sur l'onglet Admin
   useEffect(() => {
-    if (authenticated && activeTab === 'admin' && isAdmin) {
-      fetchUsers();
+    if (!isAdmin && activeTab === 'admin') {
+      setActiveTab('dashboard');
     }
-  }, [authenticated, activeTab]);
-
-  const fetchUsers = async () => {
-    setLoadingUsers(true);
-    try {
-      const response = await api.get('/admin/users');
-      setUsers(response.data);
-    } catch (err) {
-      console.error("Erreur lors de la récupération des utilisateurs", err);
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
-
-  // Basculer le statut Actif / Inactif
-  const toggleUserStatus = async (userId, currentStatus) => {
-    try {
-      await api.patch(`/admin/users/${userId}/status`, { enabled: !currentStatus });
-      showNotification(`Statut du compte mis à jour avec succès.`);
-      fetchUsers();
-    } catch (err) {
-      showNotification(`Erreur lors du changement de statut.`, true);
-    }
-  };
-
-  // Ajouter un rôle Keycloak à un utilisateur
-  const handleAddRole = async (userId) => {
-    if (!newRoleName.trim()) return;
-    try {
-      await api.post(`/admin/users/${userId}/roles/${newRoleName.trim().toUpperCase()}`);
-      showNotification(`Rôle ${newRoleName.toUpperCase()} attribué avec succès.`);
-      setNewRoleName('');
-      setSelectedUserForRole(null);
-      fetchUsers();
-    } catch (err) {
-      showNotification(`Impossible d'attribuer le rôle.`, true);
-    }
-  };
-
-  // Supprimer un utilisateur Keycloak
-  const handleDeleteUser = async (userId) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cet utilisateur de Keycloak ?")) return;
-    try {
-      await api.delete(`/admin/users/${userId}`);
-      showNotification(`Utilisateur supprimé de Keycloak.`);
-      fetchUsers();
-    } catch (err) {
-      showNotification(`Erreur lors de la suppression.`, true);
-    }
-  };
-
-  const showNotification = (msg, isError = false) => {
-    setActionMessage({ text: msg, isError });
-    setTimeout(() => setActionMessage(null), 4000);
-  };
+  }, [isAdmin, activeTab]);
 
   const handleLogin = () => keycloak.login();
   const handleLogout = () => {
@@ -87,7 +31,7 @@ export default function App({ authenticated }) {
     keycloak.logout({ redirectUri: window.location.origin });
   };
 
-  // Ecran d'accueil avant connexion SSO
+  // 1. Écran d'accueil avant connexion SSO
   if (!authenticated) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between items-center p-6 relative overflow-hidden font-sans">
@@ -120,7 +64,7 @@ export default function App({ authenticated }) {
             </span>
           </h1>
           <p className="text-slate-400 text-lg leading-relaxed">
-            Accédez à l'administration des utilisateurs Keycloak et préparez la visualisation géolocalisée de vos données d'observation.
+            Authentifiez-vous via Keycloak pour accéder aux fonctionnalités d'observation et d'administration selon vos privilèges.
           </p>
           <div className="pt-2">
             <button 
@@ -140,6 +84,7 @@ export default function App({ authenticated }) {
     );
   }
 
+  // 2. Interface Authentifiée (Différenciée par Rôle)
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex font-sans">
       {/* Sidebar Navigation */}
@@ -161,9 +106,10 @@ export default function App({ authenticated }) {
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition ${activeTab === 'dashboard' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'}`}
             >
               <LayoutDashboard className="w-5 h-5" />
-              <span>Vue D'ensemble</span>
+              <span>{isAdmin ? "Vue D'ensemble SRE" : "Mon Espace Utilisateur"}</span>
             </button>
 
+            {/* Menu affiché UNIQUEMENT si l'utilisateur a le rôle ADMIN */}
             {isAdmin && (
               <button 
                 onClick={() => setActiveTab('admin')}
@@ -189,7 +135,9 @@ export default function App({ authenticated }) {
           <div className="flex items-center justify-between">
             <div className="overflow-hidden">
               <p className="text-sm font-semibold text-white truncate">{username}</p>
-              <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-extrabold uppercase tracking-wide mt-0.5 ${isAdmin ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-800 text-slate-400'}`}>
+              <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-extrabold uppercase tracking-wide mt-0.5 ${
+                isAdmin ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+              }`}>
                 {isAdmin ? 'ADMINISTRATEUR' : 'UTILISATEUR'}
               </span>
             </div>
@@ -206,168 +154,87 @@ export default function App({ authenticated }) {
 
       {/* Zone de Contenu Principal */}
       <main className="flex-1 overflow-y-auto bg-slate-950 p-8">
-        {actionMessage && (
-          <div className={`mb-6 p-4 rounded-xl border flex items-center space-x-3 transition ${actionMessage.isError ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'}`}>
-            {actionMessage.isError ? <AlertCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
-            <span className="text-sm font-medium">{actionMessage.text}</span>
-          </div>
-        )}
-
-        {/* ONGLET 1 : Dashboard Overview */}
+        
+        {/* VUE 1 : Tableau de Bord différencié */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
             <div>
-              <h1 className="text-2xl font-bold text-white">Tableau de Bord Central</h1>
-              <p className="text-slate-400 text-sm">Aperçu du système et de la session SSO Keycloak.</p>
+              <h1 className="text-2xl font-bold text-white">
+                {isAdmin ? "Tableau de Bord Administration SRE" : `Bienvenue, ${username}`}
+              </h1>
+              <p className="text-slate-400 text-sm">
+                {isAdmin 
+                  ? "Aperçu de la plateforme, statut du cluster et accès Keycloak." 
+                  : "Accédez à vos observations et à la carte interactive des événements."}
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Realm Sécurité</p>
-                <p className="text-2xl font-black text-emerald-400 mt-2">Obsen-Realm</p>
-                <p className="text-xs text-slate-400 mt-2">&bull; OpenID Connect Active</p>
-              </div>
+            {/* Cartes Spécifiques ADMIN */}
+            {isAdmin ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Realm Sécurité</p>
+                  <p className="text-2xl font-black text-emerald-400 mt-2">Obsen-Realm</p>
+                  <p className="text-xs text-slate-400 mt-2">&bull; Accès Rôle Administrateur Actif</p>
+                </div>
 
-              <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Backend Status</p>
-                <p className="text-2xl font-black text-emerald-400 mt-2">200 OK</p>
-                <p className="text-xs text-slate-400 mt-2">&bull; Spring Boot 3.4.3</p>
-              </div>
+                <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Backend Spring Boot</p>
+                  <p className="text-2xl font-black text-emerald-400 mt-2">200 OK</p>
+                  <p className="text-xs text-slate-400 mt-2">&bull; Sync Keycloak Admin API OK</p>
+                </div>
 
-              <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Privilèges</p>
-                <p className="text-2xl font-black text-amber-400 mt-2">{isAdmin ? 'ADMIN' : 'USER'}</p>
-                <p className="text-xs text-slate-400 mt-2">&bull; Roles Keycloak Validated</p>
+                <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Droits de Session</p>
+                  <p className="text-2xl font-black text-amber-400 mt-2">ADMINISTRATEUR</p>
+                  <p className="text-xs text-slate-400 mt-2">&bull; CRUD Utilisateurs & Rôles Autorisé</p>
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Cartes Spécifiques USER */
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mon Compte SSO</p>
+                  <p className="text-xl font-bold text-white mt-2">{email || username}</p>
+                  <p className="text-xs text-emerald-400 mt-2">&bull; Authentifié via Keycloak</p>
+                </div>
+
+                <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl shadow-xl">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Statut Privilèges</p>
+                  <p className="text-xl font-bold text-emerald-400 mt-2">Observateur Standard</p>
+                  <p className="text-xs text-slate-400 mt-2">&bull; Soumission & Consultation autorisées</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* ONGLET 2 : Administration des Utilisateurs et Rôles */}
+        {/* VUE 2 : Administration (Strictement réservée au Rôle ADMIN) */}
         {activeTab === 'admin' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-2xl font-bold text-white">Gestion des Utilisateurs Keycloak</h1>
-                <p className="text-slate-400 text-sm">Gérez les comptes, les statuts et attribuez les rôles pour Obsen-Realm.</p>
-              </div>
-              <button 
-                onClick={fetchUsers}
-                className="flex items-center space-x-2 bg-slate-900 hover:bg-slate-800 text-slate-300 text-sm font-semibold px-4 py-2.5 rounded-xl border border-slate-800 transition shadow-lg"
-              >
-                <RefreshCw className={`w-4 h-4 ${loadingUsers ? 'animate-spin' : ''}`} />
-                <span>Rafraîchir</span>
-              </button>
+          isAdmin ? (
+            <AdminUsers />
+          ) : (
+            <div className="p-8 bg-red-500/10 border border-red-500/30 rounded-2xl text-center space-y-3">
+              <ShieldAlert className="w-12 h-12 text-red-400 mx-auto" />
+              <h2 className="text-xl font-bold text-white">Accès Non Autorisé</h2>
+              <p className="text-slate-400 text-sm">Vous n'avez pas le rôle ADMIN nécessaire pour accéder à cette page.</p>
             </div>
-
-            <div className="bg-slate-900/60 rounded-2xl border border-slate-800/80 overflow-hidden shadow-2xl">
-              <table className="w-full text-left">
-                <thead className="bg-slate-900/90 text-slate-400 text-xs font-bold uppercase border-b border-slate-800">
-                  <tr>
-                    <th className="p-4">Utilisateur</th>
-                    <th className="p-4">Email</th>
-                    <th className="p-4">Statut</th>
-                    <th className="p-4">Rôles Attribués</th>
-                    <th className="p-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60 text-sm">
-                  {loadingUsers ? (
-                    <tr>
-                      <td colSpan="5" className="p-8 text-center text-slate-500">Chargement de la liste des utilisateurs...</td>
-                    </tr>
-                  ) : users.length === 0 ? (
-                    <tr>
-                      <td colSpan="5" className="p-8 text-center text-slate-500">Aucun utilisateur trouvé dans le realm.</td>
-                    </tr>
-                  ) : (
-                    users.map((u) => (
-                      <tr key={u.id} className="hover:bg-slate-850/40 transition">
-                        <td className="p-4 font-bold text-white">{u.username}</td>
-                        <td className="p-4 text-slate-400">{u.email || 'Non renseigné'}</td>
-                        <td className="p-4">
-                          {u.enabled ? (
-                            <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-bold px-2.5 py-1 rounded-full">Actif</span>
-                          ) : (
-                            <span className="bg-red-500/10 text-red-400 border border-red-500/30 text-xs font-bold px-2.5 py-1 rounded-full">Inactif</span>
-                          )}
-                        </td>
-                        <td className="p-4">
-                          <div className="flex flex-wrap gap-1.5 items-center">
-                            {(u.roles || ['USER']).map((r, i) => (
-                              <span key={i} className="bg-slate-800 text-slate-300 border border-slate-700/80 text-[11px] font-semibold px-2 py-0.5 rounded-md flex items-center space-x-1">
-                                <Shield className="w-3 h-3 text-emerald-400" />
-                                <span>{r}</span>
-                              </span>
-                            ))}
-                            <button 
-                              onClick={() => setSelectedUserForRole(selectedUserForRole === u.id ? null : u.id)}
-                              className="p-1 hover:bg-slate-800 text-slate-400 hover:text-emerald-400 rounded-md transition"
-                              title="Attribuer un rôle"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-
-                          {/* Petit formulaire inline d'ajout de rôle */}
-                          {selectedUserForRole === u.id && (
-                            <div className="mt-2 flex items-center space-x-2">
-                              <input 
-                                type="text"
-                                placeholder="ex: ADMIN"
-                                value={newRoleName}
-                                onChange={(e) => setNewRoleName(e.target.value)}
-                                className="bg-slate-950 border border-slate-700 text-xs px-2 py-1 rounded text-white focus:outline-none focus:border-emerald-400"
-                              />
-                              <button 
-                                onClick={() => handleAddRole(u.id)}
-                                className="bg-emerald-500 text-slate-950 font-bold text-xs px-2.5 py-1 rounded hover:bg-emerald-400 transition"
-                              >
-                                Ajouter
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                        <td className="p-4 text-right">
-                          <div className="flex items-center justify-end space-x-2">
-                            <button 
-                              onClick={() => toggleUserStatus(u.id, u.enabled)}
-                              className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition"
-                              title={u.enabled ? "Désactiver le compte" : "Activer le compte"}
-                            >
-                              {u.enabled ? <UserX className="w-4 h-4 text-amber-400" /> : <UserCheck className="w-4 h-4 text-emerald-400" />}
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteUser(u.id)}
-                              className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition hover:text-red-400"
-                              title="Supprimer l'utilisateur"
-                            >
-                              <Trash2 className="w-4 h-4 text-red-400" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          )
         )}
 
-        {/* ONGLET 3 : Module Observations (Prêt pour la suite) */}
+        {/* VUE 3 : Module Observations */}
         {activeTab === 'observations' && (
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl font-bold text-white">Module Observation</h1>
-              <p className="text-slate-400 text-sm">Gestion des observations géolocalisées et intégration Grafana.</p>
+              <p className="text-slate-400 text-sm">Visualisation et gestion des observations sur la carte.</p>
             </div>
 
             <div className="bg-slate-900/60 border border-slate-800 p-8 rounded-2xl text-center space-y-4">
               <Activity className="w-12 h-12 text-emerald-400 mx-auto" />
-              <h2 className="text-xl font-bold text-white">Espace Prêt pour le Module Observation</h2>
+              <h2 className="text-xl font-bold text-white">Espace Prêt pour l'Intégration de la Carte Interactive</h2>
               <p className="text-slate-400 max-w-md mx-auto text-sm">
-                La gestion d'identité (Keycloak, SSO, Admin Users & Roles) est 100% opérationnelle. Nous sommes prêts à attaquer les endpoints `/api/v1/observations`.
+                L'isolation des rôles (ADMIN vs USER) est validée.
               </p>
             </div>
           </div>
