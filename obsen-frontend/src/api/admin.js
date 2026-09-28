@@ -1,20 +1,37 @@
-import axios from 'axios';
+import API from './axios'; // Ajustez l'import selon la configuration de votre instance axios
 
-const api = axios.create({
-  baseURL: 'http://localhost:8080/api/v1',
-});
+// --- GESTION DES UTILISATEURS ---
 
-// Injection automatique du token d'authentification
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token'); // ou via AuthContext
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-}, (error) => Promise.reject(error));
+export const getUsersApi = async () => {
+  return await API.get('/admin/users');
+};
 
-export default api;
-export const assignRoleToUserApi = async (userId, role) => {
-  // Remplacez '/admin/users/' et la structure par ce qu'attend votre backend
-  return await api.put(`/admin/users/${userId}/role`, { role });
+export const updateUserApi = async (userId, updatedData) => {
+  return await API.put(`/admin/users/${userId}`, updatedData);
+};
+
+export const toggleUserStatusApi = async (userId, enabled) => {
+  return await API.patch(`/admin/users/${userId}/status`, { enabled });
+};
+
+export const deleteUserApi = async (userId) => {
+  return await API.delete(`/admin/users/${userId}`);
+};
+
+export const resetUserPasswordApi = async (userId, newPassword) => {
+  return await API.post(`/admin/users/${userId}/reset-password`, { password: newPassword });
+};
+
+// --- GESTION DES RÔLES ---
+
+export const getRolesApi = async () => {
+  return await API.get('/admin/roles');
+};
+
+export const createRoleApi = async (roleData) => {
+  return await API.post('/admin/roles', roleData);
+};
+
+export const assignRoleToUserApi = async (userId, roleName) => {
+  return await API.put(`/admin/users/${userId}/role`, { role: roleName });
 };

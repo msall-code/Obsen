@@ -1,13 +1,16 @@
 import axios from 'axios';
 
-const api = axios.create({
+const API = axios.create({
     baseURL: 'http://localhost:8080/api/v1',
+    headers: {
+        'Content-Type': 'application/json',
+    },
 });
 
-// Intercepteur pour injecter automatiquement le token JWT
-api.interceptors.request.use(
+// Intercepteur pour injecter automatiquement le Token JWT
+API.interceptors.request.use(
     (config) => {
-        // Remplacez 'token' par la clé exacte sous laquelle vous enregistrez le JWT
+        // Adaptez 'token' selon la clé utilisée lors du localStorage.setItem('token', ...)
         const token = localStorage.getItem('token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
@@ -17,4 +20,15 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-export default api;
+// Intercepteur pour intercepter les erreurs 403 / 401
+API.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+            console.error("Accès refusé ou session expirée. Vérifiez vos rôles ou reconnectez-vous.");
+        }
+        return Promise.reject(error);
+    }
+);
+
+export default API;
