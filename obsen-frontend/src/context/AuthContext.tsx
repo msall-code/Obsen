@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import API, { setAccessToken } from '../api/axios';
 
 interface AuthContextType {
@@ -14,18 +14,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
-        // PURGE AUTOMATIQUE : On nettoie d'éventuels reliquats de jetons restés dans le localStorage
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('token');
     }, []);
 
     const login = async (credentials: any) => {
-        // Appel API vers le Backend
         const response = await API.post('/auth/login', credentials);
         const { token, user: userData } = response.data;
 
-        // SÉCURITÉ MAXIMALE : On garde le token uniquement dans la mémoire JS (Axios / State)
         setAccessToken(token);
         setUser(userData);
     };
@@ -33,12 +30,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const logout = () => {
         setAccessToken(null);
         setUser(null);
-        // Optionnel : Appel à l'endpoint de logout pour invalider le cookie côté serveur
         API.post('/auth/logout').catch(() => { });
     };
 
+    // Correctif S6481: Utilisation de useMemo pour stabiliser l'objet de valeur du contexte
+    const authContextValue = useMemo(() => ({
+        user,
+        login,
+        logout,
+        isAuthenticated: !!user
+    }), [user]);
+
     return (
-        <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
+        <AuthContext.Provider value={authContextValue}>
             {children}
         </AuthContext.Provider>
     );

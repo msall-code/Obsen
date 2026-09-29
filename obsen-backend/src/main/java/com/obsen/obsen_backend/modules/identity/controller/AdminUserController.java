@@ -5,16 +5,18 @@ import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/admin")
-@PreAuthorize("hasRole('ADMIN')") // Securité renforcée au niveau méthode
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminUserController {
 
     private final Keycloak keycloak;
@@ -28,10 +30,18 @@ public class AdminUserController {
 
     @GetMapping("/users")
     public ResponseEntity<List<UserRepresentation>> getUsers() {
-        List<UserRepresentation> users = keycloak.realm(realm).users().list();
-        return ResponseEntity.ok(users);
+        return ResponseEntity.ok(keycloak.realm(realm).users().list());
     }
 
+    // Endpoint de création d'utilisateur
+    @PostMapping("/users")
+    public ResponseEntity<Void> createUser(@RequestBody UserRepresentation user) {
+        user.setEnabled(true);
+        keycloak.realm(realm).users().create(user);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    // Adapté pour accepter PUT /status?enabled=true|false
     @PutMapping("/users/{userId}/status")
     public ResponseEntity<Void> toggleUserStatus(@PathVariable String userId, @RequestParam boolean enabled) {
         UserRepresentation user = keycloak.realm(realm).users().get(userId).toRepresentation();
@@ -46,8 +56,10 @@ public class AdminUserController {
         return ResponseEntity.noContent().build();
     }
 
+    // Adapté pour lire le payload JSON { "password": "..." }
     @PutMapping("/users/{userId}/password")
-    public ResponseEntity<Void> resetPassword(@PathVariable String userId, @RequestBody String newPassword) {
+    public ResponseEntity<Void> resetPassword(@PathVariable String userId, @RequestBody Map<String, String> payload) {
+        String newPassword = payload.get("password");
         CredentialRepresentation credential = new CredentialRepresentation();
         credential.setType(CredentialRepresentation.PASSWORD);
         credential.setValue(newPassword);
@@ -70,26 +82,20 @@ public class AdminUserController {
 
     @GetMapping("/roles")
     public ResponseEntity<List<RoleRepresentation>> getAllRoles() {
-        return ResponseEntity.ok(keycloak.realm(realm).roles().list());
+        try {
+            List<RoleRepresentation> roles = keycloak.realm(realm).roles().list();
+            return ResponseEntity.ok(roles);
+        } catch (Exception e) {
+            // Affiche la vraie cause de l'erreur dans la console backend Spring Boot
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @PostMapping("/roles")
     public ResponseEntity<Void> createRole(@RequestBody RoleRepresentation role) {
         keycloak.realm(realm).roles().create(role);
-        return ResponseEntity.ok().build();
-    }
-
-    @PutMapping("/roles/{roleName}")
-    public ResponseEntity<Void> updateRole(@PathVariable String roleName, @RequestBody RoleRepresentation updatedRole) {
-        RoleRepresentation role = keycloak.realm(realm).roles().get(roleName).toRepresentation();
-        if (updatedRole.getDescription() != null) {
-            role.setDescription(updatedRole.getDescription());
-        }
-        if (updatedRole.getName() != null && !updatedRole.getName().equalsIgnoreCase(roleName)) {
-            role.setName(updatedRole.getName());
-        }
-        keycloak.realm(realm).roles().get(roleName).update(role);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @DeleteMapping("/roles/{roleName}")
@@ -102,13 +108,6 @@ public class AdminUserController {
     public ResponseEntity<Void> assignRoleToUser(@PathVariable String userId, @PathVariable String roleName) {
         RoleRepresentation role = keycloak.realm(realm).roles().get(roleName).toRepresentation();
         keycloak.realm(realm).users().get(userId).roles().realmLevel().add(Collections.singletonList(role));
-        return ResponseEntity.ok().build();
-    }
-
-    @DeleteMapping("/users/{userId}/roles/{roleName}")
-    public ResponseEntity<Void> removeRoleFromUser(@PathVariable String userId, @PathVariable String roleName) {
-        RoleRepresentation role = keycloak.realm(realm).roles().get(roleName).toRepresentation();
-        keycloak.realm(realm).users().get(userId).roles().realmLevel().remove(Collections.singletonList(role));
         return ResponseEntity.ok().build();
     }
 }
