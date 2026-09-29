@@ -10,22 +10,32 @@ const API = axios.create({
 // Intercepteur pour injecter automatiquement le Token JWT
 API.interceptors.request.use(
     (config) => {
-        // Adaptez 'token' selon la clé utilisée lors du localStorage.setItem('token', ...)
-        const token = localStorage.getItem('token');
+        // Récupère 'accessToken' (ou 'token' en secours)
+        const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
+            console.log('✅ [Axios] Token JWT envoyé avec succès');
+        } else {
+            console.warn('⚠️ [Axios] Aucun Token trouvé dans le localStorage !');
         }
+
         return config;
     },
     (error) => Promise.reject(error)
 );
 
-// Intercepteur pour intercepter les erreurs 403 / 401
+// Intercepteur pour gérer les erreurs d'authentification / rôles
 API.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-            console.error("Accès refusé ou session expirée. Vérifiez vos rôles ou reconnectez-vous.");
+        if (error.response) {
+            const status = error.response.status;
+            if (status === 401) {
+                console.error('❌ [401 Unauthorized] Le token est absent, invalide ou expiré.');
+            } else if (status === 403) {
+                console.error("❌ [403 Forbidden] Le token est valide mais l'utilisateur n'a pas les privilèges (ex: rôle ADMIN).");
+            }
         }
         return Promise.reject(error);
     }

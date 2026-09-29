@@ -27,6 +27,13 @@ public class AdminUserController {
 
     // --- GESTION DES UTILISATEURS ---
 
+    // 0. Récupérer la liste de tous les utilisateurs (Ajouté pour corriger l'erreur 404)
+    @GetMapping("/users")
+    public ResponseEntity<List<UserRepresentation>> getUsers() {
+        List<UserRepresentation> users = keycloak.realm(realm).users().list();
+        return ResponseEntity.ok(users);
+    }
+
     // 1. Activer / Désactiver un compte utilisateur
     @PutMapping("/users/{userId}/status")
     public ResponseEntity<Void> toggleUserStatus(@PathVariable String userId, @RequestParam boolean enabled) {
