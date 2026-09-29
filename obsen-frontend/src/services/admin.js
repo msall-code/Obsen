@@ -1,4 +1,4 @@
-import API from './axios'; // Ajustez l'import selon la configuration de votre instance axios
+import API from '../api/axios'; // Ajustez l'import selon la configuration de votre instance axios
 
 // --- GESTION DES UTILISATEURS ---
 

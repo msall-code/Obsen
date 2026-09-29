@@ -5,7 +5,7 @@ server:
       cookie:
         name: OBSEN_SESSION
         http-only: true
-        secure: false # Passer à 'true' en production avec HTTPS
+        secure: true # Passer à 'true' en production avec HTTPS
         same-site: STRICT
 
 spring:

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import keycloak from './keycloak';
+import { setAccessToken } from './api/axios';
 import AdminUsers from './pages/AdminUsers';
 import { 
   ShieldCheck, LogOut, Users, 
@@ -24,9 +25,13 @@ export default function App({ authenticated }) {
   }, [isAdmin, activeTab]);
 
   const handleLogin = () => keycloak.login();
+  
   const handleLogout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+    // 1. Vidage immédiat de la mémoire locale JS
+    setAccessToken(null);
+    localStorage.clear();
+    
+    // 2. Déconnexion globale Keycloak
     keycloak.logout({ redirectUri: window.location.origin });
   };
 
@@ -102,7 +107,7 @@ export default function App({ authenticated }) {
                 {isAdmin ? 'ADMINISTRATEUR' : 'UTILISATEUR'}
               </span>
             </div>
-            <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-red-400">
+            <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-red-400" title="Déconnexion">
               <LogOut className="w-5 h-5" />
             </button>
           </div>

@@ -5,7 +5,7 @@ import {
   toggleUserStatusApi,
   deleteUserApi,
   resetUserPasswordApi,
-} from '../api/admin';
+} from '../services/admin';
 
 import EditUserModal from '../components/admin/EditUserModal';
 import ResetPasswordModal from '../components/admin/ResetPasswordModal';

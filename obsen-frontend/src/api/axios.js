@@ -1,40 +1,40 @@
 import axios from 'axios';
 
+// Variable locale volatile en mémoire (effacée si on ferme l'onglet/navigateur)
+let accessTokenInMemory = null;
+
+export const setAccessToken = (token) => {
+    accessTokenInMemory = token;
+};
+
+export const getAccessToken = () => accessTokenInMemory;
+
 const API = axios.create({
     baseURL: 'http://localhost:8080/api/v1',
     headers: {
         'Content-Type': 'application/json',
     },
-    withCredentials: true,
+    withCredentials: true, // Autorise l'envoi et la réception de Cookies sécurisés
 });
 
-// Injection automatique du Token JWT pour chaque requête
+// Injection du jeton JWT uniquement s'il est présent dans la mémoire JS
 API.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
-
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+        if (accessTokenInMemory) {
+            config.headers.Authorization = `Bearer ${accessTokenInMemory}`;
         }
-
         return config;
     },
     (error) => Promise.reject(error)
 );
 
-// Intercepteur pour gérer les erreurs globales de sécurité
+// Intercepteur global pour les erreurs de sécurité
 API.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response) {
-            const { status } = error.response;
-
-            if (status === 401) {
-                console.error('[Sécurité] Session expirée ou jeton invalide (401). Redirection vers le login...');
-                // Éventuelle redirection ou nettoyage de session ici
-            } else if (status === 403) {
-                console.error('[Sécurité] Accès refusé (403) : Droits insuffisants (Rôle ADMIN requis).');
-            }
+        if (error.response?.status === 401) {
+            console.warn('[Sécurité] Session expirée ou jeton invalide. Nettoyage de la mémoire.');
+            setAccessToken(null);
         }
         return Promise.reject(error);
     }
