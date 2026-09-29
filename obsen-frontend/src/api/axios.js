@@ -5,36 +5,19 @@ const API = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
+    withCredentials: true, // Autorise le navigateur à envoyer/recevoir les cookies de session et jetons
 });
 
-// Intercepteur pour injecter automatiquement le Token JWT
-API.interceptors.request.use(
-    (config) => {
-        // Récupère 'accessToken' (ou 'token' en secours)
-        const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
-
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-            console.log('✅ [Axios] Token JWT envoyé avec succès');
-        } else {
-            console.warn('⚠️ [Axios] Aucun Token trouvé dans le localStorage !');
-        }
-
-        return config;
-    },
-    (error) => Promise.reject(error)
-);
-
-// Intercepteur pour gérer les erreurs d'authentification / rôles
+// Intercepteur pour intercepter les erreurs d'authentification
 API.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response) {
             const status = error.response.status;
             if (status === 401) {
-                console.error('❌ [401 Unauthorized] Le token est absent, invalide ou expiré.');
+                console.error("❌ Session non authentifiée ou expirée. Redirection vers la connexion...");
             } else if (status === 403) {
-                console.error("❌ [403 Forbidden] Le token est valide mais l'utilisateur n'a pas les privilèges (ex: rôle ADMIN).");
+                console.error("❌ Accès interdit : Vous n'avez pas le rôle requis (ADMIN).");
             }
         }
         return Promise.reject(error);
