@@ -5,19 +5,35 @@ const API = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
-    withCredentials: true, // Autorise le navigateur à envoyer/recevoir les cookies de session et jetons
+    withCredentials: true,
 });
 
-// Intercepteur pour intercepter les erreurs d'authentification
+// Injection automatique du Token JWT pour chaque requête
+API.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
+// Intercepteur pour gérer les erreurs globales de sécurité
 API.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response) {
-            const status = error.response.status;
+            const { status } = error.response;
+
             if (status === 401) {
-                console.error("❌ Session non authentifiée ou expirée. Redirection vers la connexion...");
+                console.error('[Sécurité] Session expirée ou jeton invalide (401). Redirection vers le login...');
+                // Éventuelle redirection ou nettoyage de session ici
             } else if (status === 403) {
-                console.error("❌ Accès interdit : Vous n'avez pas le rôle requis (ADMIN).");
+                console.error('[Sécurité] Accès refusé (403) : Droits insuffisants (Rôle ADMIN requis).');
             }
         }
         return Promise.reject(error);

@@ -19,7 +19,7 @@ public class KeycloakJwtAuthenticationConverter implements Converter<Jwt, Abstra
     @Override
     public AbstractAuthenticationToken convert(@NonNull Jwt jwt) {
         Collection<GrantedAuthority> authorities = extractAuthorities(jwt);
-        return new JwtAuthenticationToken(jwt, authorities);
+        return new JwtAuthenticationToken(jwt, authorities, jwt.getClaimAsString("preferred_username"));
     }
 
     @SuppressWarnings("unchecked")
@@ -32,12 +32,13 @@ public class KeycloakJwtAuthenticationConverter implements Converter<Jwt, Abstra
         List<String> roles = (List<String>) realmAccess.get("roles");
         return roles.stream()
                 .map(role -> {
-                    String roleName = role.toUpperCase();
-                    // Évite la duplication si le rôle commence déjà par "ROLE_"
-                    if (!roleName.startsWith("ROLE_")) {
-                        roleName = "ROLE_" + roleName;
+                    String formattedRole = role.toUpperCase();
+                    // Empêche de générer ROLE_ROLE_ADMIN si Keycloak fournit déjà "ROLE_ADMIN" ou
+                    // "Admin"
+                    if (!formattedRole.startsWith("ROLE_")) {
+                        formattedRole = "ROLE_" + formattedRole;
                     }
-                    return new SimpleGrantedAuthority(roleName);
+                    return new SimpleGrantedAuthority(formattedRole);
                 })
                 .collect(Collectors.toList());
     }
