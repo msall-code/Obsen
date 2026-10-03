@@ -1,5 +1,6 @@
 package com.obsen.obsen_backend.modules.identity.controller;
 
+import jakarta.ws.rs.WebApplicationException;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
@@ -33,7 +34,6 @@ public class AdminUserController {
         return ResponseEntity.ok(keycloak.realm(realm).users().list());
     }
 
-    // Endpoint de création d'utilisateur
     @PostMapping("/users")
     public ResponseEntity<Void> createUser(@RequestBody UserRepresentation user) {
         user.setEnabled(true);
@@ -41,7 +41,6 @@ public class AdminUserController {
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
-    // Adapté pour accepter PUT /status?enabled=true|false
     @PutMapping("/users/{userId}/status")
     public ResponseEntity<Void> toggleUserStatus(@PathVariable String userId, @RequestParam boolean enabled) {
         UserRepresentation user = keycloak.realm(realm).users().get(userId).toRepresentation();
@@ -56,7 +55,6 @@ public class AdminUserController {
         return ResponseEntity.noContent().build();
     }
 
-    // Adapté pour lire le payload JSON { "password": "..." }
     @PutMapping("/users/{userId}/password")
     public ResponseEntity<Void> resetPassword(@PathVariable String userId, @RequestBody Map<String, String> payload) {
         String newPassword = payload.get("password");
@@ -85,9 +83,11 @@ public class AdminUserController {
         try {
             List<RoleRepresentation> roles = keycloak.realm(realm).roles().list();
             return ResponseEntity.ok(roles);
+        } catch (WebApplicationException e) {
+            // Utilise l'import 'jakarta.ws.rs.WebApplicationException' défini au début du fichier
+            int status = e.getResponse().getStatus();
+            return ResponseEntity.status(status).build();
         } catch (Exception e) {
-            // Affiche la vraie cause de l'erreur dans la console backend Spring Boot
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
