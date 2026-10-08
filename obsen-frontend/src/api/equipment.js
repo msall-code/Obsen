@@ -1,56 +1,85 @@
-import API from './axios';
+// Données initiales d'inventaire
+export const INITIAL_EQUIPMENT_INVENTORY = [
+  {
+    id: "EQ-001",
+    nodeName: "SRV-OBSEN-01",
+    category: "COMPUTE",
+    status: "ACTIVE",
+    ipAddress: "192.168.10.12",
+    macAddress: "00:1A:2B:3C:4D:5E",
+    location: "Salle Serveur A - Baie 01",
+    lastMaintenance: "2024-11-15"
+  },
+  {
+    id: "EQ-002",
+    nodeName: "SW-CORE-01",
+    category: "NETWORK",
+    status: "ACTIVE",
+    ipAddress: "192.168.10.1",
+    macAddress: "00:1A:2B:3C:4D:5F",
+    location: "Salle Serveur A - Baie 02",
+    lastMaintenance: "2024-10-01"
+  },
+  {
+    id: "EQ-003",
+    nodeName: "UPS-MAIN-01",
+    category: "ELECTRICAL",
+    status: "WARNING",
+    ipAddress: "192.168.10.250",
+    macAddress: "00:1A:2B:3C:4D:60",
+    location: "Local Technique - Rez-de-chaussée",
+    lastMaintenance: "2024-08-20"
+  }
+];
+
+// Variable en mémoire pour simuler la base de données locale en l'absence de backend connecté
+let localInventory = [...INITIAL_EQUIPMENT_INVENTORY];
 
 /**
- * Récupère la liste complète de l'inventaire des équipements.
- * @param {Object} params - Filtres optionnels (ex: { category: 'COMPUTE', status: 'ACTIVE' })
+ * Récupère tous les équipements
  */
-export const getAllEquipments = async (params = {}) => {
-    const response = await API.get('/inventory/equipments', { params });
-    return response.data;
+export const getAllEquipments = async () => {
+  try {
+    // Si une API backend est disponible, décommentez la ligne fetch :
+    // const response = await fetch('/api/equipments');
+    // return await response.json();
+
+    return Promise.resolve(localInventory);
+  } catch (error) {
+    console.error("Erreur lors de la récupération des équipements :", error);
+    return Promise.resolve(localInventory);
+  }
 };
 
-/**
- * Récupère un équipement spécifique par son ID.
- * @param {string|number} id - Identifiant de l'équipement
- */
-export const getEquipmentById = async (id) => {
-    const response = await API.get(`/inventory/equipments/${id}`);
-    return response.data;
-};
+// Alias d'exportation pour assurer la compatibilité ascendante
+export const getEquipments = getAllEquipments;
 
 /**
- * Crée un nouvel équipement dans l'inventaire.
- * @param {Object} equipmentData - Données saisies dans le formulaire d'initialisation
+ * Ajoute un nouvel équipement
  */
 export const createEquipment = async (equipmentData) => {
-    const response = await API.post('/inventory/equipments', equipmentData);
-    return response.data;
+  const newEquipment = {
+    ...equipmentData,
+    id: equipmentData.id || `EQ-00${localInventory.length + 1}`
+  };
+  localInventory = [newEquipment, ...localInventory];
+  return Promise.resolve(newEquipment);
 };
 
 /**
- * Enregistre un lot d'équipements (initialisation d'un parc complet ou nœuds EVE-NG).
- * @param {Array} equipmentList - Liste d'équipements à créer
- */
-export const batchCreateEquipments = async (equipmentList) => {
-    const response = await API.post('/inventory/equipments/batch', equipmentList);
-    return response.data;
-};
-
-/**
- * Met à jour un équipement existant.
- * @param {string|number} id - Identifiant de l'équipement
- * @param {Object} equipmentData - Nouvelles données de l'équipement
+ * Met à jour un équipement existant
  */
 export const updateEquipment = async (id, equipmentData) => {
-    const response = await API.put(`/inventory/equipments/${id}`, equipmentData);
-    return response.data;
+  localInventory = localInventory.map((item) =>
+    item.id === id ? { ...item, ...equipmentData } : item
+  );
+  return Promise.resolve({ id, ...equipmentData });
 };
 
 /**
- * Supprime un équipement de l'inventaire.
- * @param {string|number} id - Identifiant de l'équipement
+ * Supprime un équipement par son ID
  */
 export const deleteEquipment = async (id) => {
-    const response = await API.delete(`/inventory/equipments/${id}`);
-    return response.data;
+  localInventory = localInventory.filter((item) => item.id !== id);
+  return Promise.resolve({ success: true, id });
 };

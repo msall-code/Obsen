@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-    Plus, HardDrive, RefreshCw, ShieldCheck,
-    X, AlertCircle, Server
-} from 'lucide-react';
+import { Plus, RefreshCw, Server, AlertCircle } from 'lucide-react';
 import EquipmentTable from '../components/equipment/EquipmentTable';
 import {
-    getEquipments,
+    getAllEquipments,
     createEquipment,
     updateEquipment,
-    batchCreateEquipments,
+    deleteEquipment,
     INITIAL_EQUIPMENT_INVENTORY
 } from '../api/equipment';
 
@@ -16,75 +13,62 @@ export default function EquipmentPage() {
     const [equipments, setEquipments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
-    // Gestion de la modale d'ajout / modification
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingEquipment, setEditingEquipment] = useState(null);
     const [submitting, setSubmitting] = useState(false);
 
-    // État du formulaire
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingEquipment, setEditingEquipment] = useState(null);
+
     const [formData, setFormData] = useState({
         id: '',
         nodeName: '',
         category: 'COMPUTE',
-        fabricant: '',
-        modele: '',
+        status: 'ACTIVE',
         ipAddress: '',
         macAddress: '',
-        role: '',
-        statutOperationnel: 'ACTIF'
+        location: '',
+        lastMaintenance: ''
     });
 
-    // Charger la liste des équipements
     const fetchInventory = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            const data = await getEquipments();
-            setEquipments(data || []);
+            const data = await getAllEquipments();
+            if (Array.isArray(data) && data.length > 0) {
+                setEquipments(data);
+            } else {
+                setEquipments(INITIAL_EQUIPMENT_INVENTORY);
+            }
         } catch (err) {
-            console.error("Erreur lors du chargement de l'inventaire :", err);
-            setError("Impossible de charger la liste des équipements. Vérifiez votre connexion à l'API.");
+            console.error("Erreur de chargement des équipements:", err);
+            setError("Impossible de charger les équipements.");
+            setEquipments(INITIAL_EQUIPMENT_INVENTORY);
         } finally {
             setLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        fetchInventory();
+        void fetchInventory();
     }, [fetchInventory]);
 
-    // Ouverture de la modale en mode Création
-    const handleOpenCreateModal = () => {
-        setEditingEquipment(null);
-        setFormData({
-            id: `EQ-${Math.floor(1000 + Math.random() * 9000)}`,
-            nodeName: '',
-            category: 'COMPUTE',
-            fabricant: '',
-            modele: '',
-            ipAddress: '',
-            macAddress: '',
-            role: '',
-            statutOperationnel: 'ACTIF'
-        });
-        setIsModalOpen(true);
-    };
-
-    // Ouverture de la modale en mode Édition
-    const handleOpenEditModal = (equipment) => {
-        setEditingEquipment(equipment);
-        setFormData({
-            id: equipment.id || '',
-            nodeName: equipment.nodeName || '',
-            category: equipment.category || 'COMPUTE',
-            fabricant: equipment.fabricant || '',
-            modele: equipment.modele || '',
-            ipAddress: equipment.ipAddress || '',
-            macAddress: equipment.macAddress || '',
-            role: equipment.role || '',
-            statutOperationnel: equipment.statutOperationnel || 'ACTIF'
-        });
+    const handleOpenModal = (equipment = null) => {
+        if (equipment) {
+            setEditingEquipment(equipment);
+            setFormData(equipment);
+        } else {
+            setEditingEquipment(null);
+            setFormData({
+                id: `EQ-${String(equipments.length + 1).padStart(3, '0')}`,
+                nodeName: '',
+                category: 'COMPUTE',
+                status: 'ACTIVE',
+                ipAddress: '',
+                macAddress: '',
+                location: '',
+                lastMaintenance: new Date().toISOString().split('T')[0]
+            });
+        }
         setIsModalOpen(true);
     };
 
@@ -93,8 +77,12 @@ export default function EquipmentPage() {
         setEditingEquipment(null);
     };
 
-    // Soumission du formulaire (Création ou Mise à jour)
-    const handleSubmitForm = async (e) => {
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
         try {
@@ -103,243 +91,182 @@ export default function EquipmentPage() {
             } else {
                 await createEquipment(formData);
             }
+            await fetchInventory();
             handleCloseModal();
-            fetchInventory();
         } catch (err) {
-            console.error("Erreur d'enregistrement :", err);
-            alert("Erreur lors de l'enregistrement de l'équipement.");
+            console.error("Erreur lors de l'enregistrement :", err);
+            setError("Échec de l'enregistrement de l'équipement.");
         } finally {
             setSubmitting(false);
         }
     };
 
-    // Injection rapide du jeu de données EVE-NG
-    const handleSeedData = async () => {
-        if (window.confirm("Voulez-vous injecter l'inventaire de démonstration OBSEN ?")) {
-            setLoading(true);
+    const handleDelete = async (id) => {
+        if (window.confirm("Êtes-vous sûr de vouloir supprimer cet équipement ?")) {
             try {
-                await batchCreateEquipments(INITIAL_EQUIPMENT_INVENTORY);
+                await deleteEquipment(id);
                 await fetchInventory();
             } catch (err) {
-                console.error("Erreur lors de l'injection :", err);
-                setError("Erreur lors de l'injection des données.");
-                setLoading(false);
+                console.error("Erreur lors de la suppression :", err);
+                setError("Impossible de supprimer cet équipement.");
             }
         }
     };
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 space-y-6">
-
-            {/* EN-TÊTE DE LA PAGE */}
+            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
-                <div>
-                    <div className="flex items-center space-x-3">
-                        <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
-                            <Server className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold tracking-tight text-white">
-                                Inventaire Équipements
-                            </h1>
-                            <p className="text-xs text-slate-400 mt-0.5">
-                                Gestion centralisée du matériel et des nœuds réseau du lab OBSEN
-                            </p>
-                        </div>
+                <div className="flex items-center space-x-3">
+                    <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400">
+                        <Server className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight text-white">Gestion des Équipements</h1>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                            Inventaire et suivi matériel du laboratoire OBSEN
+                        </p>
                     </div>
                 </div>
 
-                {/* Boutons d'action */}
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={handleSeedData}
-                        disabled={loading}
-                        className="flex items-center gap-2 px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition disabled:opacity-50"
-                        title="Injecter le jeu de données par défaut"
+                        onClick={fetchInventory}
+                        className="p-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded-xl transition"
+                        title="Rafraîchir la liste"
                     >
-                        <HardDrive className="w-4 h-4 text-amber-400" />
-                        <span className="hidden sm:inline">Initialiser Démo</span>
+                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-blue-400' : ''}`} />
                     </button>
-
                     <button
-                        onClick={handleOpenCreateModal}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-500/20"
+                        onClick={() => handleOpenModal()}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl transition shadow-lg shadow-blue-500/20"
                     >
-                        <Plus className="w-4 h-4 stroke-[3]" />
-                        <span>Nouvel Équipement</span>
+                        <Plus className="w-4 h-4" />
+                        <span>Ajouter un Équipement</span>
                     </button>
                 </div>
             </div>
 
-            {/* MESSAGE D'ERREUR EVENTUEL */}
+            {/* Message d'erreur éventuel */}
             {error && (
-                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center justify-between text-red-400 text-xs">
-                    <div className="flex items-center space-x-2">
-                        <AlertCircle className="w-4 h-4 shrink-0" />
-                        <span>{error}</span>
-                    </div>
-                    <button onClick={fetchInventory} className="underline hover:text-red-300">
-                        Réessayer
-                    </button>
+                <div className="p-4 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{error}</span>
                 </div>
             )}
 
-            {/* TABLEAU DES ÉQUIPEMENTS */}
+            {/* Table d'affichage */}
             <EquipmentTable
                 equipments={equipments}
                 loading={loading}
-                onRefresh={fetchInventory}
-                onEdit={handleOpenEditModal}
+                onEdit={handleOpenModal}
+                onDelete={handleDelete}
             />
 
-            {/* MODALE CRÉATION / ÉDITION */}
+            {/* Modal Création / Modification */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-                    <div className="bg-slate-900 border border-slate-800 w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
+                        <h2 className="text-lg font-bold text-white border-b border-slate-800 pb-3">
+                            {editingEquipment ? "Modifier l'équipement" : "Nouveau matériel"}
+                        </h2>
 
-                        {/* Header Modale */}
-                        <div className="flex items-center justify-between p-5 border-b border-slate-800 bg-slate-950/40">
-                            <div className="flex items-center space-x-2">
-                                <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                                <h2 className="text-base font-bold text-white">
-                                    {editingEquipment ? `Modifier Equipement [${formData.id}]` : "Ajouter un Équipement"}
-                                </h2>
-                            </div>
-                            <button
-                                onClick={handleCloseModal}
-                                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        {/* Formulaire Modale */}
-                        <form onSubmit={handleSubmitForm} className="p-6 space-y-4 text-xs">
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* ID Équipement */}
+                        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+                            <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-slate-400 font-medium mb-1.5">ID Equipement *</label>
+                                    <label className="block text-slate-400 mb-1">Identifiant</label>
                                     <input
                                         type="text"
+                                        name="id"
+                                        value={formData.id}
+                                        onChange={handleInputChange}
                                         required
                                         disabled={!!editingEquipment}
-                                        value={formData.id}
-                                        onChange={(e) => setFormData({ ...formData, id: e.target.value })}
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono disabled:opacity-50"
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                                     />
                                 </div>
-
-                                {/* Nom du Nœud */}
                                 <div>
-                                    <label className="block text-slate-400 font-medium mb-1.5">Nom du Nœud / Hostname *</label>
+                                    <label className="block text-slate-400 mb-1">Nom du Nœud</label>
                                     <input
                                         type="text"
-                                        required
-                                        placeholder="ex: core-router-01"
+                                        name="nodeName"
                                         value={formData.nodeName}
-                                        onChange={(e) => setFormData({ ...formData, nodeName: e.target.value })}
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+                                        onChange={handleInputChange}
+                                        required
+                                        placeholder="ex: SRV-OBSEN-02"
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-blue-500"
                                     />
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Catégorie */}
+                            <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-slate-400 font-medium mb-1.5">Catégorie *</label>
+                                    <label className="block text-slate-400 mb-1">Catégorie</label>
                                     <select
+                                        name="category"
                                         value={formData.category}
-                                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+                                        onChange={handleInputChange}
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-blue-500"
                                     >
-                                        <option value="COMPUTE">Compute</option>
-                                        <option value="NETWORK">Réseau</option>
-                                        <option value="ELECTRICAL">Électricité</option>
-                                        <option value="SOFTWARE">Software</option>
+                                        <option value="COMPUTE">COMPUTE (Serveur)</option>
+                                        <option value="NETWORK">NETWORK (Réseau)</option>
+                                        <option value="ELECTRICAL">ELECTRICAL (Énergie)</option>
+                                        <option value="STORAGE">STORAGE (Stockage)</option>
                                     </select>
                                 </div>
-
-                                {/* Statut opérationnel */}
                                 <div>
-                                    <label className="block text-slate-400 font-medium mb-1.5">Statut Opérationnel</label>
+                                    <label className="block text-slate-400 mb-1">Statut</label>
                                     <select
-                                        value={formData.statutOperationnel}
-                                        onChange={(e) => setFormData({ ...formData, statutOperationnel: e.target.value })}
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+                                        name="status"
+                                        value={formData.status}
+                                        onChange={handleInputChange}
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-blue-500"
                                     >
-                                        <option value="ACTIF">Actif / Healthy</option>
-                                        <option value="INACTIF">Inactif / Down</option>
+                                        <option value="ACTIVE">ACTIVE (Actif)</option>
+                                        <option value="WARNING">WARNING (Avertissement)</option>
+                                        <option value="INACTIVE">INACTIVE (Hors-ligne)</option>
                                     </select>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Fabricant */}
+                            <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-slate-400 font-medium mb-1.5">Fabricant / Marque</label>
+                                    <label className="block text-slate-400 mb-1">Adresse IP</label>
                                     <input
                                         type="text"
-                                        placeholder="ex: Cisco, Dell, Schneider"
-                                        value={formData.fabricant}
-                                        onChange={(e) => setFormData({ ...formData, fabricant: e.target.value })}
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
-                                    />
-                                </div>
-
-                                {/* Modèle */}
-                                <div>
-                                    <label className="block text-slate-400 font-medium mb-1.5">Modèle</label>
-                                    <input
-                                        type="text"
-                                        placeholder="ex: Catalyst 9300 / PowerEdge"
-                                        value={formData.modele}
-                                        onChange={(e) => setFormData({ ...formData, modele: e.target.value })}
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* IP Address */}
-                                <div>
-                                    <label className="block text-slate-400 font-medium mb-1.5">Adresse IP</label>
-                                    <input
-                                        type="text"
-                                        placeholder="ex: 192.168.10.1"
+                                        name="ipAddress"
                                         value={formData.ipAddress}
-                                        onChange={(e) => setFormData({ ...formData, ipAddress: e.target.value })}
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"
+                                        onChange={handleInputChange}
+                                        placeholder="192.168.1.X"
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-blue-500 font-mono"
                                     />
                                 </div>
-
-                                {/* MAC Address */}
                                 <div>
-                                    <label className="block text-slate-400 font-medium mb-1.5">Adresse MAC</label>
+                                    <label className="block text-slate-400 mb-1">Adresse MAC</label>
                                     <input
                                         type="text"
-                                        placeholder="ex: 00:1A:2B:3C:4D:5E"
+                                        name="macAddress"
                                         value={formData.macAddress}
-                                        onChange={(e) => setFormData({ ...formData, macAddress: e.target.value })}
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"
+                                        onChange={handleInputChange}
+                                        placeholder="00:1A:2B:3C:4D:5E"
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-blue-500 font-mono"
                                     />
                                 </div>
                             </div>
 
-                            {/* Rôle */}
                             <div>
-                                <label className="block text-slate-400 font-medium mb-1.5">Rôle / Description</label>
+                                <label className="block text-slate-400 mb-1">Emplacement Physique</label>
                                 <input
                                     type="text"
-                                    placeholder="ex: Routeur de cœur de réseau du Lab"
-                                    value={formData.role}
-                                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+                                    name="location"
+                                    value={formData.location}
+                                    onChange={handleInputChange}
+                                    placeholder="ex: Salle A - Baie 03"
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-blue-500"
                                 />
                             </div>
 
-                            {/* Footer Modale */}
-                            <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-800">
+                            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
                                 <button
                                     type="button"
                                     onClick={handleCloseModal}
@@ -350,18 +277,15 @@ export default function EquipmentPage() {
                                 <button
                                     type="submit"
                                     disabled={submitting}
-                                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 rounded-xl font-bold transition flex items-center space-x-2 disabled:opacity-50"
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition font-semibold"
                                 >
-                                    {submitting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                                    <span>{editingEquipment ? "Mettre à jour" : "Créer l'équipement"}</span>
+                                    {submitting ? 'Enregistrement...' : 'Enregistrer'}
                                 </button>
                             </div>
-
                         </form>
                     </div>
                 </div>
             )}
-
         </div>
     );
 }
