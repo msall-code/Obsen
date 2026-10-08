@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import keycloak from './keycloak';
 import { setAccessToken } from './api/axios';
 import AdminUsers from './pages/AdminUsers';
+import EquipmentPage from './pages/EquipmentPage';
+import DashboardPage from './pages/DashboardPage';
 import { 
   ShieldCheck, LogOut, Users, 
-  Activity, LayoutDashboard
+  Activity, LayoutDashboard, Server
 } from 'lucide-react';
 
 export default function App({ authenticated }) {
@@ -16,11 +18,11 @@ export default function App({ authenticated }) {
   
   const username = keycloak.tokenParsed?.preferred_username || 'Utilisateur';
 
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('telemetry');
 
   useEffect(() => {
     if (!isAdmin && activeTab === 'admin') {
-      setActiveTab('dashboard');
+      setActiveTab('telemetry');
     }
   }, [isAdmin, activeTab]);
 
@@ -47,8 +49,8 @@ export default function App({ authenticated }) {
 
         <main className="text-center max-w-2xl my-auto space-y-6">
           <h1 className="text-5xl font-black text-white">Plateforme Obsen</h1>
-          <p className="text-slate-400">Connectez-vous via Keycloak pour accéder à vos privilèges.</p>
-          <button onClick={handleLogin} className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-8 py-4 rounded-xl text-lg">
+          <p className="text-slate-400">Observabilité et Supervision des Environnements Numériques.</p>
+          <button onClick={handleLogin} className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-8 py-4 rounded-xl text-lg transition">
             Se Connecter 
           </button>
         </main>
@@ -59,7 +61,7 @@ export default function App({ authenticated }) {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex font-sans">
       {/* Sidebar Navigation */}
-      <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between">
+      <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0">
         <div>
           <div className="p-6 flex items-center space-x-3 border-b border-slate-800">
             <ShieldCheck className="w-6 h-6 text-emerald-400" />
@@ -67,15 +69,25 @@ export default function App({ authenticated }) {
           </div>
 
           <nav className="p-4 space-y-1.5">
+            {/* Télémétrie / Dashboard */}
             <button 
-              onClick={() => setActiveTab('dashboard')}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition ${activeTab === 'dashboard' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:bg-slate-800'}`}
+              onClick={() => setActiveTab('telemetry')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition ${activeTab === 'telemetry' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:bg-slate-800'}`}
             >
-              <LayoutDashboard className="w-5 h-5" />
-              <span>{isAdmin ? "Dashboard SRE" : "Espace Utilisateur"}</span>
+              <Activity className="w-5 h-5" />
+              <span>Supervision Télémétrie</span>
             </button>
 
-            {/* Menu affiché UNIQUEMENT si l'utilisateur a le rôle Admin */}
+            {/* Inventaire Équipements */}
+            <button 
+              onClick={() => setActiveTab('equipment')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition ${activeTab === 'equipment' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:bg-slate-800'}`}
+            >
+              <Server className="w-5 h-5" />
+              <span>Inventaire Équipements</span>
+            </button>
+
+            {/* Admin Utilisateurs (Rôle Admin requis) */}
             {isAdmin && (
               <button 
                 onClick={() => setActiveTab('admin')}
@@ -86,11 +98,12 @@ export default function App({ authenticated }) {
               </button>
             )}
 
+            {/* Module Observations */}
             <button 
               onClick={() => setActiveTab('observations')}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-sm transition ${activeTab === 'observations' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:bg-slate-800'}`}
             >
-              <Activity className="w-5 h-5" />
+              <LayoutDashboard className="w-5 h-5" />
               <span>Observations</span>
             </button>
           </nav>
@@ -99,40 +112,36 @@ export default function App({ authenticated }) {
         {/* Pied de sidebar - Profil */}
         <div className="p-4 border-t border-slate-800 bg-slate-900/40">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-white">{username}</p>
+            <div className="overflow-hidden pr-2">
+              <p className="text-sm font-semibold text-white truncate">{username}</p>
               <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-bold uppercase mt-0.5 ${
                 isAdmin ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
               }`}>
                 {isAdmin ? 'ADMINISTRATEUR' : 'UTILISATEUR'}
               </span>
             </div>
-            <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-red-400" title="Déconnexion">
+            <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-red-400 transition" title="Déconnexion">
               <LogOut className="w-5 h-5" />
             </button>
           </div>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-8">
-        {activeTab === 'dashboard' && (
-          <div className="space-y-4">
-            <h1 className="text-2xl font-bold text-white">
-              {isAdmin ? "Tableau de Bord Administrateur SRE" : `Bienvenue, ${username}`}
-            </h1>
-            <p className="text-slate-400 text-sm">
-              {isAdmin ? "Vous avez un accès total à la gestion du Realm et des observations." : "Espace dédié à la consultation et à la soumission d'observations."}
-            </p>
-          </div>
-        )}
+      {/* Zone de contenu principal */}
+      <main className="flex-1 overflow-y-auto">
+        {activeTab === 'telemetry' && <DashboardPage />}
+
+        {activeTab === 'equipment' && <EquipmentPage />}
 
         {activeTab === 'admin' && (
-          isAdmin ? <AdminUsers /> : <div className="text-red-400">Accès interdit.</div>
+          isAdmin ? <AdminUsers /> : <div className="p-8 text-red-400 font-bold">Accès interdit.</div>
         )}
 
         {activeTab === 'observations' && (
-          <div className="text-white font-bold">Module Observations</div>
+          <div className="p-8 text-white font-bold">
+            <h1 className="text-2xl font-bold mb-2">Module Observations</h1>
+            <p className="text-slate-400 text-sm">Gestion des journaux, événements et métriques d'observation de la plateforme.</p>
+          </div>
         )}
       </main>
     </div>
