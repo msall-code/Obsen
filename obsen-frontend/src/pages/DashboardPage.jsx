@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Activity, Cpu, HardDrive, Thermometer, 
-  RefreshCw, AlertTriangle, CheckCircle2, Server, 
+import {
+  Activity, Cpu, HardDrive, Thermometer,
+  RefreshCw, AlertTriangle, CheckCircle2, Server,
   Clock, Zap, ArrowDown, ArrowUp, Pause, Play
 } from 'lucide-react';
 import { getEquipments } from '../api/equipment';
@@ -162,7 +162,7 @@ export default function DashboardPage() {
       const t = eq.telemetry || {};
 
       return (
-        <div 
+        <div
           key={eq.id}
           className={`bg-slate-900 border rounded-2xl p-5 space-y-4 transition hover:border-slate-700 ${getCardBorderClass(t.healthStatus)}`}
         >
@@ -184,7 +184,7 @@ export default function DashboardPage() {
                 <span className="font-mono font-bold text-slate-200">{t.cpuUsage}%</span>
               </div>
               <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
-                <div 
+                <div
                   className={`h-full transition-all duration-500 ${getCpuProgressColor(t.cpuUsage)}`}
                   style={{ width: `${t.cpuUsage}%` }}
                 ></div>
@@ -197,7 +197,7 @@ export default function DashboardPage() {
                 <span className="font-mono font-bold text-slate-200">{t.ramUsage}%</span>
               </div>
               <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full bg-purple-500 transition-all duration-500"
                   style={{ width: `${t.ramUsage}%` }}
                 ></div>
@@ -262,7 +262,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 space-y-6">
-      
+
       {/* EN-TÊTE DU DASHBOARD */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
@@ -302,11 +302,10 @@ export default function DashboardPage() {
 
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition ${
-              autoRefresh 
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition ${autoRefresh
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                 : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-            }`}
+              }`}
           >
             {autoRefresh ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
             <span>{autoRefresh ? "Temps réel ACTIF" : "PAUSE"}</span>
@@ -324,7 +323,7 @@ export default function DashboardPage() {
 
       {/* KPI GLOBAL DU PARC */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        
+
         {/* Total & Santé */}
         <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl space-y-1">
           <div className="flex justify-between items-center text-slate-400 text-xs">
@@ -347,7 +346,7 @@ export default function DashboardPage() {
           </div>
           <div className="text-2xl font-bold text-white font-mono">{avgCpu}%</div>
           <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mt-2">
-            <div 
+            <div
               className={`h-full transition-all duration-500 ${getCpuProgressColor(avgCpu)}`}
               style={{ width: `${avgCpu}%` }}
             ></div>
@@ -362,7 +361,7 @@ export default function DashboardPage() {
           </div>
           <div className="text-2xl font-bold text-white font-mono">{avgRam}%</div>
           <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden mt-2">
-            <div 
+            <div
               className="h-full bg-purple-500 transition-all duration-500"
               style={{ width: `${avgRam}%` }}
             ></div>

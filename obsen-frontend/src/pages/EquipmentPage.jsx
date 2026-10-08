@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-    Plus, HardDrive, RefreshCw, Layers, ShieldCheck,
-    X, CheckCircle2, AlertCircle, Server
+    Plus, HardDrive, RefreshCw, ShieldCheck,
+    X, AlertCircle, Server
 } from 'lucide-react';
-import {EquipmentTable} from '../components/equipment/EquipmentTable';
+import EquipmentTable from '../components/equipment/EquipmentTable';
 import {
     getEquipments,
     createEquipment,
