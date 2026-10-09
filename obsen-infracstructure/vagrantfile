@@ -1,0 +1,57 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/focal64"
+  config.vm.hostname = "eve-ng"
+
+  # Fixe l'IP sur la carte Host-Only sans demander de DHCP
+  config.vm.network "private_network", ip: "192.168.56.100"
+
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.name = "EVE-NG-Lab"
+    vb.memory = "8192"
+    vb.cpus = 4
+
+    vb.customize ["modifyvm", :id, "--nested-hw-virt", "on"]
+    vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]
+  end
+
+  config.vm.provision "shell", inline: <<-SHELL
+    export DEBIAN_FRONTEND=noninteractive
+
+    echo "==> 1. Fixer les noms d'interfaces eth0/eth1..."
+    sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"/' /etc/default/grub
+    update-grub
+
+    echo "==> 2. Configuration Netplan (eth0 pour NAT, pnet1 sur eth1 pour 192.168.56.100)..."
+    cat <<'EOF' > /etc/netplan/50-vagrant.yaml
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    eth0:
+      dhcp4: true
+    eth1:
+      dhcp4: false
+  bridges:
+    pnet1:
+      interfaces: [eth1]
+      addresses:
+        - 192.168.56.100/24
+EOF
+
+    echo "==> 3. Installation d'EVE-NG..."
+    apt-get update -y
+    apt-get install -y wget curl net-tools software-properties-common gnupg2
+    rm -f /etc/apt/sources.list.d/eve-ng.list
+    echo "deb [trusted=yes] http://www.eve-ng.net/repo focal main" > /etc/apt/sources.list.d/eve-ng.list
+    apt-get update -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowUnsignedRepositories=true || true
+    apt-get install -y --allow-unauthenticated eve-ng || true
+
+    echo "==> 4. Neutralisation de l'assistant bleu au login..."
+    chmod -x /etc/profile.d/ovf.sh 2>/dev/null || true
+  SHELL
+end
